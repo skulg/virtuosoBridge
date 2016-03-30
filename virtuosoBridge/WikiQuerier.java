@@ -20,9 +20,9 @@ import org.apache.jena.base.Sys;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 public class WikiQuerier {
-private final String user="";
-private final String pass="";
-private final String server="localhost:1111";
+	private  String user="";
+	private  String pass="";
+	private  String server=":1111";
 
 	private VirtGraph set = new VirtGraph("http://wikiDataReduced2","jdbc:virtuoso://"+server+"/charset=UTF-8/log_enable=2", user, pass);
 	private String prefix="PREFIX relation: <http://test/relation/> PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> PREFIX term: <http://test/term/>";
@@ -30,6 +30,13 @@ private final String server="localhost:1111";
 	private String where ="";
 	private String params="";
 
+
+
+	public WikiQuerier(String user,String pass, String server){
+		this.user=user;
+		this.pass=pass;
+		this.server=server;
+	}
 
 	/*
 	 * Return Whole DataSet
@@ -93,10 +100,10 @@ private final String server="localhost:1111";
 	public HashMap<String, Double> calcRelProfileFromCat(String uri){
 		HashMap<String, Double> resultMap= new HashMap<String,Double>();
 		LinkedList<String> list= new LinkedList<String>();
-		
+
 		System.out.println("Fetching entities");
 		list=fetchAllEntitiesBelongingToCat(uri);
-		
+
 
 		System.out.println("Calculating Relations Profiles from List");
 		resultMap=this.fetchSumNormalizeRelationsProfiles(list);
@@ -134,7 +141,7 @@ private final String server="localhost:1111";
 	/*
 	 * Sum 2 relation profile and Normalize
 	 */
-	
+
 	public HashMap<String, Double> sum2RelationProfileAndNormalize(HashMap<String, Double> map1 , HashMap<String, Double> map2){
 		HashMap<String, Double> resultMap=map1;
 
@@ -160,7 +167,7 @@ private final String server="localhost:1111";
 	/*
 	 *  Fetch relations profiles of List and sum them up and normalize on the way
 	 */
-	
+
 	public HashMap<String, Double> fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
 		HashMap<String, Double> resultMap = new HashMap<String,Double>();
 
@@ -314,21 +321,21 @@ private final String server="localhost:1111";
 		return results;
 
 	}
-	
+
 	public void printHashMap(HashMap<String, Double> map){
 
 		System.out.println("----------------");
 		System.out.println("Printing HASHMAP");
 		System.out.println("----------------");
-		
+
 		for (String name: map.keySet()){
 
-            String key =name.toString();
-            String value = map.get(name).toString();  
-            System.out.println(key + " " + value);  
+			String key =name.toString();
+			String value = map.get(name).toString();  
+			System.out.println(key + " " + value);  
 
 
-} 
+		} 
 	}
 
 }

@@ -8,6 +8,8 @@ import virtuoso.jena.driver.*;
 public class WikiBridgeMain {
 
 	public static void main(String[] args) {
+		
+		
 		WikiQuerier querier= new WikiQuerier();
 		//querier.selectAll();
 		//querier.selectMostFreqRelations(100);	
