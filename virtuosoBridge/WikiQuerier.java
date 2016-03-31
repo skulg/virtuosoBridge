@@ -1,11 +1,9 @@
 package virtuosoBridge;
 import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
-import virtuoso.jena.driver.VirtGraph;
-import virtuoso.jena.driver.VirtuosoQueryExecution;
-import virtuoso.jena.driver.VirtuosoQueryExecutionFactory;
-
+import virtuoso.jena.driver.*;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,13 +16,14 @@ import java.util.Map.Entry;
 
 import org.apache.jena.base.Sys;
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 public class WikiQuerier {
 	private  String user="";
 	private  String pass="";
-	private  String server=":1111";
+	private  String server="";
 
-	private VirtGraph set = new VirtGraph("http://wikiDataReduced2","jdbc:virtuoso://"+server+"/charset=UTF-8/log_enable=2", user, pass);
+	private VirtGraph set ;
 	private String prefix="PREFIX relation: <http://test/relation/> PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> PREFIX term: <http://test/term/>";
 	private String select = "";
 	private String where ="";
@@ -32,10 +31,12 @@ public class WikiQuerier {
 
 
 
-	public WikiQuerier(String user,String pass, String server){
+	public WikiQuerier(String user,String pass, String server , String graph){
 		this.user=user;
 		this.pass=pass;
 		this.server=server;
+		set=new VirtGraph(graph,"jdbc:virtuoso://"+server+"/charset=UTF-8/log_enable=2", user, pass);
+
 	}
 
 	/*
@@ -153,10 +154,20 @@ public class WikiQuerier {
 			Double val1 = currentEntry.getValue();
 			if (resultMap.containsKey(key)){
 				Double val2 = resultMap.get(key);
-				resultMap.put(key, (val1+val2)/2);
+				resultMap.put(key, (val1+val2));
 			}else{
-				resultMap.put(key, val1/2);
+				resultMap.put(key, val1);
 			}
+
+		}
+
+		iter=resultMap.entrySet().iterator();
+
+		while(iter.hasNext()){
+			Entry<String, Double> currentEntry = iter.next();
+			String key = currentEntry.getKey();
+			Double val1 = currentEntry.getValue();
+			resultMap.put(key, val1/2);
 
 		}
 
@@ -168,17 +179,40 @@ public class WikiQuerier {
 	 *  Fetch relations profiles of List and sum them up and normalize on the way
 	 */
 
-	public HashMap<String, Double> fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
+	private HashMap<String, Double> fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
 		HashMap<String, Double> resultMap = new HashMap<String,Double>();
 
 		Iterator<String> iter =list.iterator();
 
+		//FETCH first occurence out of loop to initialize resultMap
+		if (iter.hasNext()){
+			String currentUri="<"+iter.next()+">";
+			HashMap<String, Double> currentMap =this.findEntityRelationProfile(currentUri);
+			resultMap=currentMap;
+			resultMap=sum2RelationProfileAndNormalize(resultMap, currentMap);
+
+
+		}
 		while (iter.hasNext()){
 			String currentUri="<"+iter.next()+">";
+			//System.out.println("");
 
 			//System.out.println("Treating:" + currentUri);
 			HashMap<String, Double> currentMap =this.findEntityRelationProfile(currentUri);
+
+			//System.out.println("Before MAP !!!!!!!");
+			//this.printSortedRelationProfile(resultMap);
+			//System.out.println("ADDING TOMAP !!!!!!!");
+
+			//this.printSortedRelationProfile(currentMap);
+
+
 			resultMap=sum2RelationProfileAndNormalize(resultMap, currentMap);
+			//System.out.println("RESULT MAP !!!!!!!");
+
+			//this.printSortedRelationProfile(resultMap);
+
+
 		}
 
 
@@ -189,10 +223,10 @@ public class WikiQuerier {
 	 * Compare 2 relationProfile for ordering
 	 */
 
-	public void compare2RelationProfile(HashMap<String, Double> set1 ,HashMap<String, Double> set2){
+	public HashMap<String, Double> compare2RelationProfile(HashMap<String, Double> set1 ,HashMap<String, Double> set2){
 
 		Iterator<Entry<String, Double>> iter=set1.entrySet().iterator();
-		LinkedList<Entry<String,Double>> resultList=new LinkedList<Entry<String,Double>>();
+		HashMap<String, Double> resultMap= new HashMap<String, Double>();
 		while (iter.hasNext()){
 			Entry<String,Double> currentEntry=iter.next();
 			String key=currentEntry.getKey();
@@ -202,14 +236,40 @@ public class WikiQuerier {
 				val2=set2.get(key);
 			}
 			Double resultVal=val2-val1;
+			resultMap.put(key,resultVal);
 
-			//System.out.println(key+" | "+val1+" | "+val2+" | "+resultVal);
-			resultList.add(new AbstractMap.SimpleEntry<String, Double>(key,resultVal));
 		}
-		Collections.sort(resultList, new MyListComparator());
+
+		return resultMap;
+
+	}
+
+
+	public void printSortedRelationProfile(HashMap<String, Double> map){
+		LinkedList<Entry<String,Double>> resultList=new LinkedList<Entry<String,Double>>();
+
+		resultList=this.hashMapToSortedLinkedList(map);
+
 		for(Entry<String,Double> e:resultList){
 			System.out.println(e.getKey()+" "+e.getValue());
 		}
+	}
+
+	private LinkedList<Entry<String,Double>> hashMapToSortedLinkedList(HashMap<String, Double> map){
+
+		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
+		LinkedList<Entry<String,Double>> resultList=new LinkedList<Entry<String,Double>>();
+		while (iter.hasNext()){
+			Entry<String,Double> currentEntry=iter.next();
+			String key=currentEntry.getKey();
+			Double val=currentEntry.getValue();
+			resultList.add(new AbstractMap.SimpleEntry<String, Double>(key,val));
+		}
+		Collections.sort(resultList, new MyListComparator());
+		return resultList;
+
+
+
 	}
 	class MyListComparator implements Comparator<Entry<String,Double>>{
 
@@ -224,7 +284,6 @@ public class WikiQuerier {
 			}
 		}
 	}
-
 	/*
 	 *  Generate normalRelation profile
 	 */
@@ -336,6 +395,36 @@ public class WikiQuerier {
 
 
 		} 
+	}
+
+
+	private void testingOnTestGraph(){
+
+		
+
+		Node foo1 = NodeFactory.createURI("http://example.org/#foo1");
+		Node bar1 = NodeFactory.createURI("http://example.org/#bar1");
+		Node baz1 = NodeFactory.createURI("http://example.org/#baz1");
+
+		Node foo2 = NodeFactory.createURI("http://example.org/#foo2");
+		Node bar2 = NodeFactory.createURI("http://example.org/#bar2");
+		Node baz2 = NodeFactory.createURI("http://example.org/#baz2");
+
+		Node foo3 = NodeFactory.createURI("http://example.org/#foo3");
+		Node bar3 = NodeFactory.createURI("http://example.org/#bar3");
+		Node baz3 = NodeFactory.createURI("http://example.org/#baz3");
+		
+		set.add(new Triple(foo1, bar1, baz1));
+		set.add(new Triple(foo1, bar2, baz1));
+		set.add(new Triple(foo2, bar1, baz2));
+		set.add(new Triple(foo3, bar2, baz3));
+		set.add(new Triple(foo2, bar2, baz1));
+		System.out.println("graph.getCount() = " + set.getCount());
+		
+		
+		
+		
+
 	}
 
 }

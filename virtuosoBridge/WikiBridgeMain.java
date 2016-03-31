@@ -1,33 +1,70 @@
 package virtuosoBridge;
 
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
 
 import virtuoso.jena.driver.*;
 
 public class WikiBridgeMain {
-
+	static String user="";
+	static String pass="";
+	static String server="";
 	public static void main(String[] args) {
+		String graph="http://wikiDataReduced2";
+
+		String testingGraph="http://testingStuff";
 		
-		
-		WikiQuerier querier= new WikiQuerier();
-		//querier.selectAll();
-		//querier.selectMostFreqRelations(100);	
-		//querier.findEntityRelationProfile("term:Obama");
+		//INIT QUERIER
+		readServerInfo();
+		WikiQuerier querier= new WikiQuerier(user,pass,server,graph);
 
-		HashMap<String, Double> normalRelationDistributionMap=querier.generateNormalRelationProfile();
-		//Double value =relationDistributionMap.get("http://test/relation/passer");
-		//System.out.println(value);		
-		//HashMap<String, Double> queryRelationDistributionMap=querier.findEntityRelationProfile("term:la_ville");
 
-		//querier.compare2RelationProfile(normalRelationDistributionMap, queryRelationDistributionMap);
-
-		//System.out.println(querier.fetchAllEntitiesBelongingToCat("term:un_film"));
+		// get Mean Relation Distribution
+		//HashMap<String, Double> normalRelationDistributionMap=querier.generateNormalRelationProfile();
 		HashMap<String, Double> resultSet=new HashMap<String,Double>();
-		resultSet=querier.calcRelProfileFromCat("term:un_film");
+
+		//Queries
+
+		//resultSet=querier.calcRelProfileFromCat("term:un_film");
+		//querier.compare2RelationProfile(normalRelationDistributionMap,resultSet);
 		
-		querier.compare2RelationProfile(normalRelationDistributionMap,resultSet);
-		
-		
+		//querier.printSortedRelationProfile(resultSet);
+		resultSet=querier.calcRelProfileFromCat("term:une_ville");
+		querier.printSortedRelationProfile(resultSet);
 	}
+
+/*
+ * Read server info from file to avoid making info public through file versioning(Git).
+ */
+	static void readServerInfo(){
+		try{
+			File f=new File("serverInfo.txt");
+			FileReader fileReader = new FileReader(f);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+			String line;
+			int lineNumber=0;
+			while ((line = bufferedReader.readLine()) != null) {
+				switch (lineNumber){
+				case 0: user=line;
+				lineNumber++;
+				break;
+				case 1: pass=line;
+				lineNumber++;
+				break;
+				case 2: server=line;
+				lineNumber++;
+				break;
+				}
+			}
+			fileReader.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 }
