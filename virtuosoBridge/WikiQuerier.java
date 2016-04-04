@@ -24,18 +24,19 @@ public class WikiQuerier {
 	private  String server="";
 
 	private VirtGraph set ;
-	private String prefix="PREFIX relation: <http://test/relation/> PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> PREFIX term: <http://test/term/>";
+	private String prefix="PREFIX relation: <http://test/relation/> PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> PREFIX term: <http://test/term/> PREFIX cat: <http://test/category/>";
 	private String select = "";
 	private String where ="";
 	private String params="";
-
+	private String graph="";
 
 
 	public WikiQuerier(String user,String pass, String server , String graph){
 		this.user=user;
 		this.pass=pass;
 		this.server=server;
-		set=new VirtGraph(graph,"jdbc:virtuoso://"+server+"/charset=UTF-8/log_enable=2", user, pass);
+		this.graph=graph;
+		set=new VirtGraph(this.graph,"jdbc:virtuoso://"+server+"/charset=UTF-8/log_enable=2", user, pass);
 
 	}
 
@@ -51,6 +52,7 @@ public class WikiQuerier {
 
 		this.select="SELECT *";
 		this.where="WHERE {?s ?p ?o }";
+		this.params="";
 
 		ResultSet results=this.runQuery();
 		somewhatPrettyPrint(vars, results);
@@ -60,7 +62,7 @@ public class WikiQuerier {
 	/*
 	 * Return the relation profile of Entity corresponding to URI
 	 */
-	public HashMap<String, Double> findEntityRelationProfile(String uri){
+	public HashMap<String, Double> findEntityRelationProfile2(String uri){
 		int normalFactor=1;
 
 		this.select="SELECT (count(?p) AS ?totalCount)";
@@ -94,6 +96,42 @@ public class WikiQuerier {
 		return relationMap;	
 	}
 
+	/*
+	 * Return the relation profile of Entity corresponding to URI
+	 * 
+	 * BUGGED right now since the graph as problem use findEntityRelationProfile2 for now
+	 * 
+	 */
+	public HashMap<String, Double> findEntityRelationProfile(String uri){
+
+		String relationProfileGraph="http://wikiDataRelProfile";
+
+		ArrayList<String> vars= new ArrayList<String>();	
+		HashMap<String,Double> relationMap = new HashMap<String,Double>();
+		vars.add("p");
+		vars.add("o");
+
+
+		this.select="SELECT ?p ?o FROM <"+relationProfileGraph+"> ";
+		this.where="WHERE {graph <"+relationProfileGraph +"> {"+uri +" ?p ?o }}";
+		this.params="";
+
+		ResultSet results=this.runQuery();
+
+		while (results.hasNext()) {
+			QuerySolution result = results.nextSolution();
+			String relation=result.get("p").toString();
+			Double prob=Double.valueOf(entityCleaner(result.get("o").toString()));
+			relationMap.put(relation,prob);
+
+		}
+
+
+		return relationMap;	
+	}
+
+
+
 
 	/*
 	 * Return sum of relations profiles according to some category and normalize
@@ -113,6 +151,9 @@ public class WikiQuerier {
 		return resultMap;
 	}
 
+	
+	
+	
 	/*
 	 * Return a list of URI belonging to category
 	 */
@@ -143,7 +184,7 @@ public class WikiQuerier {
 	 * Sum 2 relation profile and Normalize
 	 */
 
-	public HashMap<String, Double> sum2RelationProfileAndNormalize(HashMap<String, Double> map1 , HashMap<String, Double> map2){
+	public HashMap<String, Double> sum2RelationProfile(HashMap<String, Double> map1 , HashMap<String, Double> map2){
 		HashMap<String, Double> resultMap=map1;
 
 		Iterator<Entry<String, Double>> iter = map2.entrySet().iterator();
@@ -161,19 +202,24 @@ public class WikiQuerier {
 
 		}
 
-		iter=resultMap.entrySet().iterator();
 
-		while(iter.hasNext()){
-			Entry<String, Double> currentEntry = iter.next();
-			String key = currentEntry.getKey();
-			Double val1 = currentEntry.getValue();
-			resultMap.put(key, val1/2);
-
-		}
 
 		return resultMap;
 	}
 
+	
+	private HashMap<String, Double> normalizeRelationProfile(HashMap<String, Double> map , int normalFactor){
+		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
+		HashMap<String, Double> resultMap = new HashMap<String , Double>();
+		while(iter.hasNext()){
+			Entry<String, Double> currentEntry = iter.next();
+			String key = currentEntry.getKey();
+			Double val1 = currentEntry.getValue();
+			resultMap.put(key, val1/normalFactor);
+
+		}
+		return resultMap;
+	}
 
 	/*
 	 *  Fetch relations profiles of List and sum them up and normalize on the way
@@ -183,14 +229,14 @@ public class WikiQuerier {
 		HashMap<String, Double> resultMap = new HashMap<String,Double>();
 
 		Iterator<String> iter =list.iterator();
-
+		int normalizingFactor=0;
 		//FETCH first occurence out of loop to initialize resultMap
 		if (iter.hasNext()){
 			String currentUri="<"+iter.next()+">";
-			HashMap<String, Double> currentMap =this.findEntityRelationProfile(currentUri);
+			HashMap<String, Double> currentMap =this.findEntityRelationProfile2(currentUri);
 			resultMap=currentMap;
-			resultMap=sum2RelationProfileAndNormalize(resultMap, currentMap);
-
+			resultMap=sum2RelationProfile(resultMap, currentMap);
+			normalizingFactor++;
 
 		}
 		while (iter.hasNext()){
@@ -198,7 +244,7 @@ public class WikiQuerier {
 			//System.out.println("");
 
 			//System.out.println("Treating:" + currentUri);
-			HashMap<String, Double> currentMap =this.findEntityRelationProfile(currentUri);
+			HashMap<String, Double> currentMap =this.findEntityRelationProfile2(currentUri);
 
 			//System.out.println("Before MAP !!!!!!!");
 			//this.printSortedRelationProfile(resultMap);
@@ -207,14 +253,17 @@ public class WikiQuerier {
 			//this.printSortedRelationProfile(currentMap);
 
 
-			resultMap=sum2RelationProfileAndNormalize(resultMap, currentMap);
+			resultMap=sum2RelationProfile(resultMap, currentMap);
 			//System.out.println("RESULT MAP !!!!!!!");
 
 			//this.printSortedRelationProfile(resultMap);
-
+			
+			
+			normalizingFactor++;
 
 		}
-
+		
+		resultMap=this.normalizeRelationProfile(resultMap, normalizingFactor);
 
 		return resultMap;
 	}
@@ -398,33 +447,128 @@ public class WikiQuerier {
 	}
 
 
-	private void testingOnTestGraph(){
+	public void testingOnTestGraph(){
 
-		
+		Node foo1 = NodeFactory.createURI("http://test/term/foo1");
+		Node bar1 = NodeFactory.createURI("http://test/relation/être");
+		Node baz1 = NodeFactory.createURI("http://test/term/baz1");
 
-		Node foo1 = NodeFactory.createURI("http://example.org/#foo1");
-		Node bar1 = NodeFactory.createURI("http://example.org/#bar1");
-		Node baz1 = NodeFactory.createURI("http://example.org/#baz1");
+		Node foo2 = NodeFactory.createURI("http://test/term/foo2");
+		Node bar2 = NodeFactory.createURI("http://test/relation/bar2");
+		Node baz2 = NodeFactory.createURI("http://test/term/baz2");
 
-		Node foo2 = NodeFactory.createURI("http://example.org/#foo2");
-		Node bar2 = NodeFactory.createURI("http://example.org/#bar2");
-		Node baz2 = NodeFactory.createURI("http://example.org/#baz2");
+		Node foo3 = NodeFactory.createURI("http://test/term/foo3");
+		Node bar3 = NodeFactory.createURI("http://test/relation/bar3");
+		Node baz3 = NodeFactory.createURI("http://test/term/baz3");
 
-		Node foo3 = NodeFactory.createURI("http://example.org/#foo3");
-		Node bar3 = NodeFactory.createURI("http://example.org/#bar3");
-		Node baz3 = NodeFactory.createURI("http://example.org/#baz3");
-		
 		set.add(new Triple(foo1, bar1, baz1));
 		set.add(new Triple(foo1, bar2, baz1));
 		set.add(new Triple(foo2, bar1, baz2));
 		set.add(new Triple(foo3, bar2, baz3));
 		set.add(new Triple(foo2, bar2, baz1));
+		set.add(new Triple(foo1,bar3,baz1));
+		set.add(new Triple(foo1,bar3,baz2));
+		set.add(new Triple(foo1,bar3,baz3));
 		System.out.println("graph.getCount() = " + set.getCount());
-		
-		
-		
-		
 
+	}
+
+	public void generateCatRelationProfileGraph(String catURI){
+		HashMap<String, Double> relationProfile =this.calcRelProfileFromCat(catURI);
+		Iterator<Entry<String, Double>> iter =relationProfile.entrySet().iterator();
+
+		catURI=catURI.replace("term:", "cat:");
+		
+		while(iter.hasNext()){
+			String query=prefix+" INSERT INTO GRAPH <http://wikiDataRelProfile> {";
+
+			Entry<String,Double>currentEntry=iter.next();
+			String currentRelation=currentEntry.getKey();
+			Double currentValue=currentEntry.getValue();
+			String tripleToAdd=catURI+" <"+currentRelation + "> " + currentValue;
+			query+=tripleToAdd+". ";
+			query+="}";
+			
+			//System.out.println(query);
+
+			VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
+			vur.exec(); 
+
+		}
+
+	}
+
+	
+	/*
+	 * Generate relationGraph for all term for quicker access.
+	 * 
+	 * Note: Not so useful afterall since gain is minimal at best. Gain is a lot better for categories instead of terms.
+	 * Might also be bugged right now.
+	 */
+	public void generateSingleTermRelationProfileGraph(String uri){
+
+		HashMap<String, Double> relationProfile = this.findEntityRelationProfile(uri);
+		Iterator<Entry<String, Double>> iter =relationProfile.entrySet().iterator();
+
+		while(iter.hasNext()){
+			String query=prefix+" INSERT INTO GRAPH <http://wikiDataRelProfile> {";
+
+			Entry<String,Double>currentEntry=iter.next();
+			String currentRelation=currentEntry.getKey();
+			Double currentValue=currentEntry.getValue();
+			String tripleToAdd=uri+" <"+currentRelation + "> " + currentValue;
+			query+=tripleToAdd+". ";
+			query+="}";
+			System.out.println(query);
+
+			VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
+			vur.exec(); 
+
+		}
+
+	}
+
+	private LinkedList<String> fetchAllDistinctArg1Terms(){
+
+		LinkedList<String> resultList = new LinkedList<String>();
+		ArrayList<String> vars= new ArrayList<String>();
+		vars.add("a");
+		this.select="SELECT DISTINCT ?a ";
+		this.where="WHERE { ?a ?b ?c }";
+		this.params="";
+
+		ResultSet results=this.runQuery();
+		//somewhatPrettyPrint(vars, results);
+		while (results.hasNext()) {
+			QuerySolution result = results.nextSolution();
+			String entity="<"+result.get("a").toString()+">";
+			resultList.add(entity);
+
+		}
+
+
+
+		return resultList;
+	}
+
+	public void generateAllSingleTermRelationProfiles(){
+
+		clearRelProfileGraph();  
+
+		LinkedList<String> termList=this.fetchAllDistinctArg1Terms();
+		Iterator<String> iter=termList.iterator();
+		while (iter.hasNext()){
+			String currentUri=iter.next();
+			this.generateSingleTermRelationProfileGraph(currentUri);
+		}
+
+
+	}
+
+	public void clearRelProfileGraph() {
+		String str = "CLEAR GRAPH <http://wikiDataRelProfile>";
+		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(str, set);
+		vur.exec();
 	}
 
 }
