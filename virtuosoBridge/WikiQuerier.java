@@ -3,6 +3,7 @@ import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
+import arq.query;
 import virtuoso.jena.driver.*;
 
 import java.util.ArrayList;
@@ -205,7 +206,7 @@ public class WikiQuerier {
 		HashMap<String, Double> resultMap = new HashMap<String,Double>();
 
 		Iterator<String> iter =list.iterator();
-		int normalizingFactor=0;
+		Double normalizingFactor=0.0;
 		//FETCH first occurence out of loop to initialize resultMap
 		if (iter.hasNext()){
 			String currentUri="<"+iter.next()+">";
@@ -334,6 +335,25 @@ public class WikiQuerier {
 
 	}
 
+	
+	public void generateListCatRelationProfileGraph(LinkedList<String> list){
+		
+		this.clearRelProfileGraph();
+		
+		Iterator<String> iter=list.iterator();
+		
+		while(iter.hasNext()){
+			String cat=iter.next();
+			System.out.println("");
+			System.out.println("Generating graph for "+cat);
+			generateCatRelationProfileGraph(cat);
+			
+		}
+		
+		
+		
+	}
+	
 	/*
 	 * Generate the relationProfile of a category and add it to relationGraph for quicker future access.
 	 */
@@ -412,6 +432,31 @@ public class WikiQuerier {
 		return resultList;
 	}
 
+	
+	
+	public void findTermSimilarityToCats(String term,LinkedList<String> cats){
+		
+		Iterator<String> iter=cats.iterator();
+		HashMap<String, Double> termRelProfile=findEntityRelationProfile2(term);
+		HashMap<String, Double> normalRelProfile=this.generateNormalRelationProfile();
+		//TESTING centering Vector
+		
+		//termRelProfile= virtuosoBridgeTools.compare2RelationProfile(normalRelProfile, termRelProfile);
+		
+		while(iter.hasNext()){
+			String currentCat=iter.next();
+			currentCat=currentCat.replace("term:", "cat:");
+			HashMap<String, Double> catRelProfile=this.fetchRelProfileFromGraph(currentCat);
+			//TESTING centering Vector
+			//catRelProfile= virtuosoBridgeTools.compare2RelationProfile(normalRelProfile, catRelProfile);
+			
+			Double currentSimilarity=virtuosoBridgeTools.calcHashMapSimilirity(termRelProfile, catRelProfile);
+			System.out.println("Current Category :"+currentCat +" Similarity: "+currentSimilarity);
+		
+		}
+		
+	}
+	
 	
 	/*
 	 *  Generate the relation profile of all terms in database and add them to the relationGraph for quicker access.

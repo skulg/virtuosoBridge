@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Set;
 
 import virtuoso.jena.driver.*;
 
@@ -15,7 +17,6 @@ public class WikiBridgeMain {
 	static String server="";
 	public static void main(String[] args) {
 		String productionGraph="http://wikiDataReduced2"; //MAIN GRAPH
-
 		String testingGraph="http://testingStuff"; //TESTING GRAPH 
 
 
@@ -31,27 +32,40 @@ public class WikiBridgeMain {
 
 			querier.testingOnTestGraph();
 		}
+		
+		LinkedList<String> catToCalcRelProfile= new LinkedList<String>();
+		catToCalcRelProfile.add("term:une_ville");
+		catToCalcRelProfile.add("term:un_acteur");
+		catToCalcRelProfile.add("term:un_village");
+		catToCalcRelProfile.add("term:un_film_américain");
+		catToCalcRelProfile.add("term:un_écrivain");
+		catToCalcRelProfile.add("term:un_acteur_américain");
+		catToCalcRelProfile.add("term:un_joueur_professionel_de_hockey");
+		catToCalcRelProfile.add("term:un_journaliste");
+		catToCalcRelProfile.add("term:un_peintre");
+		catToCalcRelProfile.add("term:un_film");
+		catToCalcRelProfile.add("term:un_chanteur");
+		catToCalcRelProfile.add("term:une_chanson");
+		catToCalcRelProfile.add("term:un_joueur");
+		catToCalcRelProfile.add("term:un_musicien");
+		catToCalcRelProfile.add("term:un_groupe_de_musique");
+		
+		//Regenerate Graph of category RelationGraph
+		//querier.generateListCatRelationProfileGraph(catToCalcRelProfile);
+		
+		
 		// get Mean Relation Distribution
 		HashMap<String, Double> normalRelationDistributionMap=querier.generateNormalRelationProfile();
+		
 		HashMap<String, Double> resultSet=new HashMap<String,Double>();
-
-
-
-
-		//querier.generateAllSingleTermRelationProfiles();
-
+		HashMap<String, Double> resultSet2=new HashMap<String,Double>();
+		
+		
 		//Queries
-
-
-		//resultSet=querier.calcRelProfileFromCat("term:une_ville");
-		//querier.printSortedRelationProfile(resultSet);
-
-		//querier.generateCatRelationProfileGraph("term:une_ville");
-
-		resultSet=querier.fetchRelProfileFromGraph("cat:une_ville");
-		virtuosoBridgeTools.printSortedRelationProfile(resultSet);
-
-
+		String termToCompare ="term:Paris";
+		querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile);
+		
+		
 	}
 
 	/*
