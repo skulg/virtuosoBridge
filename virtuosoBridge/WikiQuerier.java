@@ -4,11 +4,9 @@ import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import virtuoso.jena.driver.*;
-import java.util.AbstractMap;
+
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -41,7 +39,7 @@ public class WikiQuerier {
 	}
 
 	/*
-	 * Return Whole DataSet
+	 * Print Whole DataSet
 	 * 
 	 */
 	public void selectAll(){
@@ -55,7 +53,7 @@ public class WikiQuerier {
 		this.params="";
 
 		ResultSet results=this.runQuery();
-		somewhatPrettyPrint(vars, results);
+		virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
 
 	}
 
@@ -73,7 +71,7 @@ public class WikiQuerier {
 		if(tempResult.hasNext()){
 			QuerySolution result = tempResult.nextSolution();
 			RDFNode tCount= result.get("totalCount");
-			normalFactor=Integer.valueOf(entityCleaner(tCount.toString()));
+			normalFactor=Integer.valueOf(virtuosoBridgeTools.entityCleaner(tCount.toString()));
 		}
 
 		ArrayList<String> vars= new ArrayList<String>();	
@@ -89,7 +87,7 @@ public class WikiQuerier {
 		while (results.hasNext()) {
 			QuerySolution result = results.nextSolution();
 			String relation=result.get("p").toString();
-			Double prob=Double.valueOf(entityCleaner(result.get("pCount").toString()));
+			Double prob=Double.valueOf(virtuosoBridgeTools.entityCleaner(result.get("pCount").toString()));
 			relationMap.put(relation,prob);
 
 		}
@@ -102,7 +100,7 @@ public class WikiQuerier {
 	 * BUGGED right now since the graph as problem use findEntityRelationProfile2 for now
 	 * 
 	 */
-	public HashMap<String, Double> findEntityRelationProfile(String uri){
+	private HashMap<String, Double> findEntityRelationProfile(String uri){
 
 		String relationProfileGraph="http://wikiDataRelProfile";
 
@@ -118,20 +116,11 @@ public class WikiQuerier {
 
 		ResultSet results=this.runQuery();
 
-		while (results.hasNext()) {
-			QuerySolution result = results.nextSolution();
-			String relation=result.get("p").toString();
-			Double prob=Double.valueOf(entityCleaner(result.get("o").toString()));
-			relationMap.put(relation,prob);
-
-		}
+		virtuosoBridgeTools.resultSetToRelationMap(relationMap, results);
 
 
 		return relationMap;	
 	}
-
-
-
 
 	/*
 	 * Return sum of relations profiles according to some category and normalize
@@ -151,6 +140,31 @@ public class WikiQuerier {
 		return resultMap;
 	}
 
+	
+	
+	//Fetch cached relation graph belonging to URI category instead of calculating from terms.
+	public HashMap<String, Double> fetchRelProfileFromGraph(String uri){
+		
+		String relationProfileGraph="http://wikiDataRelProfile";
+
+		ArrayList<String> vars= new ArrayList<String>();	
+		HashMap<String,Double> relationMap = new HashMap<String,Double>();
+		vars.add("p");
+		vars.add("o");
+
+
+		this.select="SELECT ?p ?o FROM <"+relationProfileGraph+"> ";
+		this.where="WHERE {graph <"+relationProfileGraph +"> {"+uri +" ?p ?o }}";
+		this.params="";
+
+		ResultSet results=this.runQuery();
+
+		virtuosoBridgeTools.resultSetToRelationMap(relationMap, results);
+
+
+		return relationMap;	
+		
+	}
 	
 	
 	
@@ -180,52 +194,14 @@ public class WikiQuerier {
 		return resultList;
 	}
 
-	/*
-	 * Sum 2 relation profile and Normalize
-	 */
-
-	public HashMap<String, Double> sum2RelationProfile(HashMap<String, Double> map1 , HashMap<String, Double> map2){
-		HashMap<String, Double> resultMap=map1;
-
-		Iterator<Entry<String, Double>> iter = map2.entrySet().iterator();
-
-		while(iter.hasNext()){
-			Entry<String, Double> currentEntry = iter.next();
-			String key = currentEntry.getKey();
-			Double val1 = currentEntry.getValue();
-			if (resultMap.containsKey(key)){
-				Double val2 = resultMap.get(key);
-				resultMap.put(key, (val1+val2));
-			}else{
-				resultMap.put(key, val1);
-			}
-
-		}
-
-
-
-		return resultMap;
-	}
 
 	
-	private HashMap<String, Double> normalizeRelationProfile(HashMap<String, Double> map , int normalFactor){
-		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
-		HashMap<String, Double> resultMap = new HashMap<String , Double>();
-		while(iter.hasNext()){
-			Entry<String, Double> currentEntry = iter.next();
-			String key = currentEntry.getKey();
-			Double val1 = currentEntry.getValue();
-			resultMap.put(key, val1/normalFactor);
-
-		}
-		return resultMap;
-	}
 
 	/*
 	 *  Fetch relations profiles of List and sum them up and normalize on the way
 	 */
 
-	private HashMap<String, Double> fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
+	 private HashMap<String, Double> fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
 		HashMap<String, Double> resultMap = new HashMap<String,Double>();
 
 		Iterator<String> iter =list.iterator();
@@ -235,7 +211,7 @@ public class WikiQuerier {
 			String currentUri="<"+iter.next()+">";
 			HashMap<String, Double> currentMap =this.findEntityRelationProfile2(currentUri);
 			resultMap=currentMap;
-			resultMap=sum2RelationProfile(resultMap, currentMap);
+			resultMap=virtuosoBridgeTools.sum2RelationProfile(resultMap, currentMap);
 			normalizingFactor++;
 
 		}
@@ -253,7 +229,7 @@ public class WikiQuerier {
 			//this.printSortedRelationProfile(currentMap);
 
 
-			resultMap=sum2RelationProfile(resultMap, currentMap);
+			resultMap=virtuosoBridgeTools.sum2RelationProfile(resultMap, currentMap);
 			//System.out.println("RESULT MAP !!!!!!!");
 
 			//this.printSortedRelationProfile(resultMap);
@@ -263,78 +239,13 @@ public class WikiQuerier {
 
 		}
 		
-		resultMap=this.normalizeRelationProfile(resultMap, normalizingFactor);
+		resultMap=virtuosoBridgeTools.normalizeRelationProfile(resultMap, normalizingFactor);
 
 		return resultMap;
 	}
 
 	/*
 	 * Compare 2 relationProfile for ordering
-	 */
-
-	public HashMap<String, Double> compare2RelationProfile(HashMap<String, Double> set1 ,HashMap<String, Double> set2){
-
-		Iterator<Entry<String, Double>> iter=set1.entrySet().iterator();
-		HashMap<String, Double> resultMap= new HashMap<String, Double>();
-		while (iter.hasNext()){
-			Entry<String,Double> currentEntry=iter.next();
-			String key=currentEntry.getKey();
-			Double val1=currentEntry.getValue();
-			Double val2=(double) 0;
-			if(set2.containsKey(key)){
-				val2=set2.get(key);
-			}
-			Double resultVal=val2-val1;
-			resultMap.put(key,resultVal);
-
-		}
-
-		return resultMap;
-
-	}
-
-
-	public void printSortedRelationProfile(HashMap<String, Double> map){
-		LinkedList<Entry<String,Double>> resultList=new LinkedList<Entry<String,Double>>();
-
-		resultList=this.hashMapToSortedLinkedList(map);
-
-		for(Entry<String,Double> e:resultList){
-			System.out.println(e.getKey()+" "+e.getValue());
-		}
-	}
-
-	private LinkedList<Entry<String,Double>> hashMapToSortedLinkedList(HashMap<String, Double> map){
-
-		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
-		LinkedList<Entry<String,Double>> resultList=new LinkedList<Entry<String,Double>>();
-		while (iter.hasNext()){
-			Entry<String,Double> currentEntry=iter.next();
-			String key=currentEntry.getKey();
-			Double val=currentEntry.getValue();
-			resultList.add(new AbstractMap.SimpleEntry<String, Double>(key,val));
-		}
-		Collections.sort(resultList, new MyListComparator());
-		return resultList;
-
-
-
-	}
-	class MyListComparator implements Comparator<Entry<String,Double>>{
-
-		@Override
-		public int compare(Entry<String,Double> e1, Entry<String,Double> e2) {
-			if(e1.getValue() < e2.getValue()){
-				return 1;
-			} else if(e1.getValue() > e2.getValue()) {
-				return -1;
-			}else{
-				return 0;
-			}
-		}
-	}
-	/*
-	 *  Generate normalRelation profile
 	 */
 
 	public HashMap<String, Double> generateNormalRelationProfile(){
@@ -352,7 +263,7 @@ public class WikiQuerier {
 			QuerySolution result = results.nextSolution();
 			String relation=result.get("p").toString();
 
-			Double prob=Double.valueOf(entityCleaner(result.get("pCount").toString()));
+			Double prob=Double.valueOf(virtuosoBridgeTools.entityCleaner(result.get("pCount").toString()));
 			normalRelationMap.put(relation,prob);
 
 		}
@@ -368,7 +279,7 @@ public class WikiQuerier {
 	}
 
 	/*
-	 *  Return most frequent Relations
+	 *  Print most frequent Relations
 	 */
 
 	public void selectMostFreqRelations(int limit){
@@ -379,40 +290,7 @@ public class WikiQuerier {
 		this.where="WHERE {?s ?p ?o }";
 		this.params="GROUP BY ?p ORDER BY DESC(?pCount) LIMIT "+limit;
 		ResultSet results=this.runQuery();
-		somewhatPrettyPrint(vars, results);
-	}
-
-	/*
-	 *  Pretty up a QuerySolution and print it accordind to list of vars
-	 */
-	private void somewhatPrettyPrint(ArrayList<String> vars , ResultSet results){
-		while (results.hasNext()) {
-			QuerySolution result = results.nextSolution();
-			Iterator<String> iter=vars.iterator();
-			String prettyString="  |||  ";
-			RDFNode graph_name = result.get("graph");
-			//prettyString+=graph_name+ "{ ";
-			while (iter.hasNext()){
-				String currentElem=iter.next();
-				prettyString=prettyString+entityCleaner(result.get(currentElem).toString())+"  |||  ";
-
-
-			}			
-			System.out.println(prettyString);
-		}
-
-	}
-
-	/*
-	 * Clean URI of prefix and datatype before printing
-	 */
-	private String entityCleaner(String s){
-		String result="";
-		String[] temp=s.split("\\^\\^");
-		String[] parts=temp[0].split("/");
-		result=parts[parts.length-1];
-		result=result.replace("_", " ");
-		return result;
+		virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
 	}
 
 	/*
@@ -429,23 +307,6 @@ public class WikiQuerier {
 		return results;
 
 	}
-
-	public void printHashMap(HashMap<String, Double> map){
-
-		System.out.println("----------------");
-		System.out.println("Printing HASHMAP");
-		System.out.println("----------------");
-
-		for (String name: map.keySet()){
-
-			String key =name.toString();
-			String value = map.get(name).toString();  
-			System.out.println(key + " " + value);  
-
-
-		} 
-	}
-
 
 	public void testingOnTestGraph(){
 
@@ -473,6 +334,10 @@ public class WikiQuerier {
 
 	}
 
+	/*
+	 * Generate the relationProfile of a category and add it to relationGraph for quicker future access.
+	 */
+	
 	public void generateCatRelationProfileGraph(String catURI){
 		HashMap<String, Double> relationProfile =this.calcRelProfileFromCat(catURI);
 		Iterator<Entry<String, Double>> iter =relationProfile.entrySet().iterator();
@@ -500,12 +365,10 @@ public class WikiQuerier {
 
 	
 	/*
-	 * Generate relationGraph for all term for quicker access.
+	 * Generate relationGraph for a term for quicker access.
 	 * 
-	 * Note: Not so useful afterall since gain is minimal at best. Gain is a lot better for categories instead of terms.
-	 * Might also be bugged right now.
 	 */
-	public void generateSingleTermRelationProfileGraph(String uri){
+	private void generateSingleTermRelationProfileGraph(String uri){
 
 		HashMap<String, Double> relationProfile = this.findEntityRelationProfile(uri);
 		Iterator<Entry<String, Double>> iter =relationProfile.entrySet().iterator();
@@ -546,11 +409,13 @@ public class WikiQuerier {
 
 		}
 
-
-
 		return resultList;
 	}
 
+	
+	/*
+	 *  Generate the relation profile of all terms in database and add them to the relationGraph for quicker access.
+	 */
 	public void generateAllSingleTermRelationProfiles(){
 
 		clearRelProfileGraph();  
@@ -565,6 +430,9 @@ public class WikiQuerier {
 
 	}
 
+	/*
+	 * Clear the relationGraph 
+	 */
 	public void clearRelProfileGraph() {
 		String str = "CLEAR GRAPH <http://wikiDataRelProfile>";
 		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(str, set);
