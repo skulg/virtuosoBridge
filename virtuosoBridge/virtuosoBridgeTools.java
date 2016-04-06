@@ -19,8 +19,10 @@ import org.apache.jena.rdf.model.RDFNode;
 
 public class virtuosoBridgeTools {
 
+	/*
+	 *Inner class for comparing 2 entry in a relation Profile. Used for ordering.
+	 */
 	static class MyListComparator implements Comparator<Entry<String,Double>>{
-
 		@Override
 		public int compare(Entry<String,Double> e1, Entry<String,Double> e2) {
 			if(e1.getValue() < e2.getValue()){
@@ -37,45 +39,14 @@ public class virtuosoBridgeTools {
 	 * Calculate similarity between two relationProfile
 	 */
 
-	static public double calcHashMapSimilirity(HashMap<String, Double> set1 ,HashMap<String, Double> set2){
-
-		
-		
-		
-		Set<String> terms=getAllKeysFrom2HashMap(set1, set2);
-
-		set1=smoothRelProfile(set1,terms);
-		set2=smoothRelProfile(set2,terms);
-		
-		//set1=compare2RelationProfile(set1, set2);
-		
-
-		Iterator<Entry<String, Double>> iter=set1.entrySet().iterator();
-		HashMap<String, Double> resultMap= new HashMap<String, Double>();
-		Double numerator=0.0;
-		Double aSquared=0.0;
-		Double bSquared=0.0;
-		while (iter.hasNext()){
-			Entry<String,Double> currentEntry=iter.next();
-			String key=currentEntry.getKey();
-			Double val1=currentEntry.getValue();
-			Double val2=set2.get(key);
-			//TODO
-			
-			numerator+=(val1*val2);
-			aSquared+=val1*val1;
-			bSquared+=val2*val2;
-		}
-		Double denominator= Math.sqrt(aSquared)*Math.sqrt(bSquared);
-		
-		Double cosSimilarity=numerator/denominator;
-		
-		return cosSimilarity;
-
+	static public double calcHashMapSimilirity(HashMap<String, Double> set1 ,HashMap<String, Double> set2 , SimilarityMeasure measure){
+		return measure.calcSimilarity(set1,set2);
 	}
 
 
-
+	/*
+	 * Get the union of the keySet of 2 hashMap
+	 */
 	public static Set<String> getAllKeysFrom2HashMap(HashMap<String,Double> map1,HashMap<String,Double> map2) {
 
 		Set<String>  resultSet= new HashSet<String>();
@@ -85,7 +56,9 @@ public class virtuosoBridgeTools {
 	}
 
 
-
+	/*
+	 *  "Smooth" a relation profile by adding a small probability mass to relations occuring in terms List but missing in set1 
+	 */
 	public static HashMap<String, Double> smoothRelProfile(HashMap<String, Double> setToSmooth,Set<String> terms) {
 		Double smoothingMass=0.0;
 		Double totalMassAdded=0.0;
@@ -94,22 +67,23 @@ public class virtuosoBridgeTools {
 		while (iter.hasNext()){
 			String currentTerm=iter.next();
 			Double currentValue=0.0;
-			
+
 			if(setToSmooth.containsKey(currentTerm)){
 				currentValue=setToSmooth.get(currentTerm);
 			}
-			
+
 			resultSet.put(currentTerm, currentValue+smoothingMass);
 			totalMassAdded+=smoothingMass;
 		}
 
 		resultSet=normalizeRelationProfile(resultSet, 1+totalMassAdded);
 		return resultSet;
-
 	}
 
 
-
+	/*
+	 *  Print a HashMap 
+	 */
 	static public void printHashMap(HashMap<String, Double> map){
 
 		System.out.println("----------------");
@@ -121,11 +95,13 @@ public class virtuosoBridgeTools {
 			String key =name.toString();
 			String value = map.get(name).toString();  
 			System.out.println(key + " " + value);  
-
-
 		} 
 	}
 
+
+	/*
+	 * Take a HashMap as input and produce a sorted LinkedList as output
+	 */
 	static public LinkedList<Entry<String,Double>> hashMapToSortedLinkedList(HashMap<String, Double> map){
 
 		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
@@ -138,9 +114,6 @@ public class virtuosoBridgeTools {
 		}
 		Collections.sort(resultList, new virtuosoBridgeTools.MyListComparator());
 		return resultList;
-
-
-
 	}
 
 	/*
@@ -156,7 +129,7 @@ public class virtuosoBridgeTools {
 	}
 
 	/*
-	 *  Pretty up a QuerySolution and print it accordind to list of vars
+	 *  Pretty up a QuerySolution and print it according to list of vars
 	 */
 	static void somewhatPrettyPrint(ArrayList<String> vars , ResultSet results){
 		while (results.hasNext()) {
@@ -164,12 +137,9 @@ public class virtuosoBridgeTools {
 			Iterator<String> iter=vars.iterator();
 			String prettyString="  |||  ";
 			RDFNode graph_name = result.get("graph");
-			//prettyString+=graph_name+ "{ ";
 			while (iter.hasNext()){
 				String currentElem=iter.next();
 				prettyString=prettyString+entityCleaner(result.get(currentElem).toString())+"  |||  ";
-
-
 			}			
 			System.out.println(prettyString);
 		}
@@ -178,16 +148,15 @@ public class virtuosoBridgeTools {
 
 	static public void printSortedRelationProfile(HashMap<String, Double> map){
 		LinkedList<Entry<String,Double>> resultList=new LinkedList<Entry<String,Double>>();
-
 		resultList=hashMapToSortedLinkedList(map);
-
 		for(Entry<String,Double> e:resultList){
 			System.out.println(e.getKey()+" "+e.getValue());
 		}
 	}
 
-	static public HashMap<String, Double> compare2RelationProfile(HashMap<String, Double> set1 ,HashMap<String, Double> set2){
 
+	//Check the difference between 2 relationVectors
+	static public HashMap<String, Double> compare2RelationProfile(HashMap<String, Double> set1 ,HashMap<String, Double> set2){
 		Iterator<Entry<String, Double>> iter=set1.entrySet().iterator();
 		HashMap<String, Double> resultMap= new HashMap<String, Double>();
 		while (iter.hasNext()){
@@ -200,13 +169,14 @@ public class virtuosoBridgeTools {
 			}
 			Double resultVal=val2-val1;
 			resultMap.put(key,resultVal);
-
 		}
-
 		return resultMap;
-
 	}
 
+	
+	/*
+	 *  Sum 2 relations profile
+	 */
 	static public HashMap<String, Double> sum2RelationProfile(HashMap<String, Double> map1 , HashMap<String, Double> map2){
 		HashMap<String, Double> resultMap=map1;
 
@@ -222,14 +192,29 @@ public class virtuosoBridgeTools {
 			}else{
 				resultMap.put(key, val1);
 			}
-
 		}
-
-
 
 		return resultMap;
 	}
 
+
+	//Normalize HashMap based on totalCount
+	static HashMap<String, Double> normalizeRelationProfile(HashMap<String, Double> map ){
+
+		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
+		HashMap<String, Double> resultMap = new HashMap<String , Double>();
+		Double sum =0.0;
+		while(iter.hasNext()){
+			Entry<String,Double> currentEntry=iter.next();
+			sum+=currentEntry.getValue();
+		}
+		resultMap=normalizeRelationProfile(map,sum);
+		return resultMap;
+
+	}
+
+
+	//Normalize HashMap by normalFactor
 	static HashMap<String, Double> normalizeRelationProfile(HashMap<String, Double> map , Double normalFactor){
 		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
 		HashMap<String, Double> resultMap = new HashMap<String , Double>();
@@ -243,6 +228,10 @@ public class virtuosoBridgeTools {
 		return resultMap;
 	}
 
+	
+	/*
+	 * Take a resultSet as input and output a HashMap corresponding to RelationProfile
+	 */
 	static void resultSetToRelationMap(HashMap<String, Double> relationMap, ResultSet results) {
 		while (results.hasNext()) {
 			QuerySolution result = results.nextSolution();

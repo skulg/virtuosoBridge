@@ -13,6 +13,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map.Entry;
 
+import javax.management.relation.Relation;
+
 import org.apache.jena.base.Sys;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -36,7 +38,6 @@ public class WikiQuerier {
 		this.server=server;
 		this.graph=graph;
 		set=new VirtGraph(this.graph,"jdbc:virtuoso://"+server+"/charset=UTF-8/log_enable=2", user, pass);
-
 	}
 
 	/*
@@ -48,32 +49,18 @@ public class WikiQuerier {
 		vars.add("s");
 		vars.add("p");
 		vars.add("o");
-
 		this.select="SELECT *";
 		this.where="WHERE {?s ?p ?o }";
 		this.params="";
-
 		ResultSet results=this.runQuery();
 		virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
-
 	}
 
 	/*
 	 * Return the relation profile of Entity corresponding to URI
 	 */
-	public HashMap<String, Double> findEntityRelationProfile2(String uri){
-		int normalFactor=1;
-
-		this.select="SELECT (count(?p) AS ?totalCount)";
-		this.where="WHERE {"+uri +" ?p ?o }";
-		this.params="";
-		ResultSet tempResult = this.runQuery();
-
-		if(tempResult.hasNext()){
-			QuerySolution result = tempResult.nextSolution();
-			RDFNode tCount= result.get("totalCount");
-			normalFactor=Integer.valueOf(virtuosoBridgeTools.entityCleaner(tCount.toString()));
-		}
+	public RelationProfile findEntityRelationProfile2(String uri){
+		int normalFactor = findTotalCountOfTerm(uri);
 
 		ArrayList<String> vars= new ArrayList<String>();	
 		HashMap<String,Double> relationMap = new HashMap<String,Double>();
@@ -92,7 +79,24 @@ public class WikiQuerier {
 			relationMap.put(relation,prob);
 
 		}
-		return relationMap;	
+		RelationProfile resultProfile=new RelationProfile(relationMap);
+		return resultProfile;	
+	}
+
+	private int findTotalCountOfTerm(String uri) {
+		int normalFactor=0;
+
+		this.select="SELECT (count(?p) AS ?totalCount)";
+		this.where="WHERE {"+uri +" ?p ?o }";
+		this.params="";
+		ResultSet tempResult = this.runQuery();
+
+		if(tempResult.hasNext()){
+			QuerySolution result = tempResult.nextSolution();
+			RDFNode tCount= result.get("totalCount");
+			normalFactor=Integer.valueOf(virtuosoBridgeTools.entityCleaner(tCount.toString()));
+		}
+		return normalFactor;
 	}
 
 	/*
@@ -126,19 +130,19 @@ public class WikiQuerier {
 	/*
 	 * Return sum of relations profiles according to some category and normalize
 	 */
-	public HashMap<String, Double> calcRelProfileFromCat(String uri){
+	public RelationProfile calcRelProfileFromCat(String uri){
 		HashMap<String, Double> resultMap= new HashMap<String,Double>();
 		LinkedList<String> list= new LinkedList<String>();
 
-		System.out.println("Fetching entities");
+		System.out.println("Fetching entities belonging to :"+uri);
 		list=fetchAllEntitiesBelongingToCat(uri);
 
 
 		System.out.println("Calculating Relations Profiles from List");
 		resultMap=this.fetchSumNormalizeRelationsProfiles(list);
 
-
-		return resultMap;
+		RelationProfile resultProfile=new RelationProfile(resultMap); //DELETE ONCE ALL function return type converted from HashMap to RelationProfile
+		return resultProfile;
 	}
 
 	
@@ -207,6 +211,7 @@ public class WikiQuerier {
 
 		Iterator<String> iter =list.iterator();
 		Double normalizingFactor=0.0;
+		
 		//FETCH first occurence out of loop to initialize resultMap
 		if (iter.hasNext()){
 			String currentUri="<"+iter.next()+">";
@@ -434,23 +439,19 @@ public class WikiQuerier {
 
 	
 	
-	public void findTermSimilarityToCats(String term,LinkedList<String> cats){
+	public void findTermSimilarityToCats(String term,LinkedList<String> cats ,SimilarityMeasure measure ){
 		
 		Iterator<String> iter=cats.iterator();
 		HashMap<String, Double> termRelProfile=findEntityRelationProfile2(term);
 		HashMap<String, Double> normalRelProfile=this.generateNormalRelationProfile();
-		//TESTING centering Vector
-		
-		//termRelProfile= virtuosoBridgeTools.compare2RelationProfile(normalRelProfile, termRelProfile);
+	
 		
 		while(iter.hasNext()){
 			String currentCat=iter.next();
 			currentCat=currentCat.replace("term:", "cat:");
 			HashMap<String, Double> catRelProfile=this.fetchRelProfileFromGraph(currentCat);
-			//TESTING centering Vector
-			//catRelProfile= virtuosoBridgeTools.compare2RelationProfile(normalRelProfile, catRelProfile);
-			
-			Double currentSimilarity=virtuosoBridgeTools.calcHashMapSimilirity(termRelProfile, catRelProfile);
+		
+			Double currentSimilarity=virtuosoBridgeTools.calcHashMapSimilirity(termRelProfile, catRelProfile,measure);
 			System.out.println("Current Category :"+currentCat +" Similarity: "+currentSimilarity);
 		
 		}

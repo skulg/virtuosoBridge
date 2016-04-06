@@ -55,28 +55,49 @@ public class WikiBridgeMain {
 		
 		
 		// get Mean Relation Distribution
-		HashMap<String, Double> normalRelationDistributionMap=querier.generateNormalRelationProfile();
+		//HashMap<String, Double> normalRelationDistributionMap=querier.generateNormalRelationProfile();
 		
 		HashMap<String, Double> resultSet=new HashMap<String,Double>();
 		HashMap<String, Double> resultSet2=new HashMap<String,Double>();
 		
 		
 		//Queries
-		String termToCompare ="term:Paris";
+		String termToCompare ="term:New_York";
 		
-		//querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile);
+		//querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile,new CosineSimilarity());
 		
+	
+		resultSet=querier.findEntityRelationProfile2(termToCompare);
+		virtuosoBridgeTools.printSortedRelationProfile(resultSet);
+		
+		
+		
+		
+		
+		
+		
+		
+		/*
 		HashMap<String, Double>testingSimilarity1= new HashMap<String, Double>();
 		HashMap<String, Double>testingSimilarity2= new HashMap<String, Double>();
+		testingSimilarity1.put("a", 0.005);
+		testingSimilarity2.put("a", 0.0002);
+
+		testingSimilarity1.put("c", 0.000000000005);
+		testingSimilarity2.put("c", 0.000000000027);
+		testingSimilarity1.put("d", 0.0000000000025);
+		testingSimilarity2.put("d", 0.000000000047);
+		testingSimilarity1.put("e", 0.0000000000011);
+		testingSimilarity2.put("e", 0.000000000127);
 		
-		testingSimilarity1.put("a", 1.0);
-		testingSimilarity1.put("b", 0.5);
-		testingSimilarity2.put("a", 0.5);
-		testingSimilarity2.put("b", 1.0);
 		
+		
+	
+		testingSimilarity1=virtuosoBridgeTools.normalizeRelationProfile(testingSimilarity1);
+		testingSimilarity2=virtuosoBridgeTools.normalizeRelationProfile(testingSimilarity2);
 		Double sim=virtuosoBridgeTools.calcHashMapSimilirity(testingSimilarity1, testingSimilarity2);
 		System.out.println(sim);
-		
+		*/
 	}
 
 	/*
