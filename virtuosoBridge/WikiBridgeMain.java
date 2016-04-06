@@ -63,8 +63,19 @@ public class WikiBridgeMain {
 		
 		//Queries
 		String termToCompare ="term:Paris";
-		querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile);
 		
+		//querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile);
+		
+		HashMap<String, Double>testingSimilarity1= new HashMap<String, Double>();
+		HashMap<String, Double>testingSimilarity2= new HashMap<String, Double>();
+		
+		testingSimilarity1.put("a", 1.0);
+		testingSimilarity1.put("b", 0.5);
+		testingSimilarity2.put("a", 0.5);
+		testingSimilarity2.put("b", 1.0);
+		
+		Double sim=virtuosoBridgeTools.calcHashMapSimilirity(testingSimilarity1, testingSimilarity2);
+		System.out.println(sim);
 		
 	}
 

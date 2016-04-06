@@ -42,12 +42,12 @@ public class virtuosoBridgeTools {
 		
 		
 		
-		//Set<String> terms=getAllKeysFrom2HashMap(set1, set2);
+		Set<String> terms=getAllKeysFrom2HashMap(set1, set2);
 
-		//set1=smoothRelProfile(set1,terms);
-		//set2=smoothRelProfile(set2,terms);
+		set1=smoothRelProfile(set1,terms);
+		set2=smoothRelProfile(set2,terms);
 		
-		set1=compare2RelationProfile(set1, set2);
+		//set1=compare2RelationProfile(set1, set2);
 		
 
 		Iterator<Entry<String, Double>> iter=set1.entrySet().iterator();
@@ -87,7 +87,7 @@ public class virtuosoBridgeTools {
 
 
 	public static HashMap<String, Double> smoothRelProfile(HashMap<String, Double> setToSmooth,Set<String> terms) {
-		Double smoothingMass=0.0000000000000000000000000000000000000001;
+		Double smoothingMass=0.0;
 		Double totalMassAdded=0.0;
 		HashMap<String, Double> resultSet=new HashMap<String,Double>();
 		Iterator<String> iter=terms.iterator();
