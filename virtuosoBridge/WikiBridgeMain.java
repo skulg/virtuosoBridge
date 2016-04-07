@@ -7,9 +7,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Set;
-
-import virtuoso.jena.driver.*;
 
 public class WikiBridgeMain {
 	static String user="";
@@ -57,21 +54,21 @@ public class WikiBridgeMain {
 		// get Mean Relation Distribution
 		//HashMap<String, Double> normalRelationDistributionMap=querier.generateNormalRelationProfile();
 		
-		HashMap<String, Double> resultSet=new HashMap<String,Double>();
-		HashMap<String, Double> resultSet2=new HashMap<String,Double>();
+		RelationProfile termProfile=new RelationProfile();
 		
 		
 		//Queries
-		String termToCompare ="term:New_York";
+		String termToCompare ="term:Obama";
 		
 		//querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile,new CosineSimilarity());
 		
+		
 	
-		resultSet=querier.findEntityRelationProfile2(termToCompare);
-		virtuosoBridgeTools.printSortedRelationProfile(resultSet);
+		termProfile=querier.findEntityRelationProfile2(termToCompare);
+		termProfile.normalize();
+		termProfile.printSortedProfile();
 		
-		
-		
+
 		
 		
 		

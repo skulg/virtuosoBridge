@@ -11,7 +11,6 @@ import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.apache.jena.base.Sys;
 import org.apache.jena.query.QuerySolution;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.RDFNode;

@@ -1,13 +1,5 @@
 package virtuosoBridge;
-import org.apache.jena.query.*;
-import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.util.iterator.ExtendedIterator;
-
-import arq.query;
-import virtuoso.jena.driver.*;
-
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -15,10 +7,20 @@ import java.util.Map.Entry;
 
 import javax.management.relation.Relation;
 
-import org.apache.jena.base.Sys;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.QuerySolution;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.RDFNode;
+
+import virtuoso.jena.driver.VirtGraph;
+import virtuoso.jena.driver.VirtuosoQueryExecution;
+import virtuoso.jena.driver.VirtuosoQueryExecutionFactory;
+import virtuoso.jena.driver.VirtuosoUpdateFactory;
+import virtuoso.jena.driver.VirtuosoUpdateRequest;
 public class WikiQuerier {
 	private  String user="";
 	private  String pass="";
@@ -37,7 +39,7 @@ public class WikiQuerier {
 		this.pass=pass;
 		this.server=server;
 		this.graph=graph;
-		set=new VirtGraph(this.graph,"jdbc:virtuoso://"+server+"/charset=UTF-8/log_enable=2", user, pass);
+		set=new VirtGraph(this.graph,"jdbc:virtuoso://"+this.server+"/charset=UTF-8/log_enable=2", this.user, this.pass);
 	}
 
 	/*
@@ -131,7 +133,7 @@ public class WikiQuerier {
 	 * Return sum of relations profiles according to some category and normalize
 	 */
 	public RelationProfile calcRelProfileFromCat(String uri){
-		HashMap<String, Double> resultMap= new HashMap<String,Double>();
+
 		LinkedList<String> list= new LinkedList<String>();
 
 		System.out.println("Fetching entities belonging to :"+uri);
@@ -139,16 +141,15 @@ public class WikiQuerier {
 
 
 		System.out.println("Calculating Relations Profiles from List");
-		resultMap=this.fetchSumNormalizeRelationsProfiles(list);
+		RelationProfile resultProfile=this.fetchSumNormalizeRelationsProfiles(list);
 
-		RelationProfile resultProfile=new RelationProfile(resultMap); //DELETE ONCE ALL function return type converted from HashMap to RelationProfile
 		return resultProfile;
 	}
 
 	
 	
 	//Fetch cached relation graph belonging to URI category instead of calculating from terms.
-	public HashMap<String, Double> fetchRelProfileFromGraph(String uri){
+	public RelationProfile fetchRelProfileFromGraph(String uri){
 		
 		String relationProfileGraph="http://wikiDataRelProfile";
 
@@ -167,7 +168,7 @@ public class WikiQuerier {
 		virtuosoBridgeTools.resultSetToRelationMap(relationMap, results);
 
 
-		return relationMap;	
+		return new RelationProfile(relationMap);	
 		
 	}
 	
@@ -206,55 +207,25 @@ public class WikiQuerier {
 	 *  Fetch relations profiles of List and sum them up and normalize on the way
 	 */
 
-	 private HashMap<String, Double> fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
-		HashMap<String, Double> resultMap = new HashMap<String,Double>();
+	 private RelationProfile fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
+		RelationProfile resultProfile = new RelationProfile();
 
 		Iterator<String> iter =list.iterator();
-		Double normalizingFactor=0.0;
 		
-		//FETCH first occurence out of loop to initialize resultMap
-		if (iter.hasNext()){
-			String currentUri="<"+iter.next()+">";
-			HashMap<String, Double> currentMap =this.findEntityRelationProfile2(currentUri);
-			resultMap=currentMap;
-			resultMap=virtuosoBridgeTools.sum2RelationProfile(resultMap, currentMap);
-			normalizingFactor++;
-
-		}
 		while (iter.hasNext()){
 			String currentUri="<"+iter.next()+">";
-			//System.out.println("");
-
-			//System.out.println("Treating:" + currentUri);
-			HashMap<String, Double> currentMap =this.findEntityRelationProfile2(currentUri);
-
-			//System.out.println("Before MAP !!!!!!!");
-			//this.printSortedRelationProfile(resultMap);
-			//System.out.println("ADDING TOMAP !!!!!!!");
-
-			//this.printSortedRelationProfile(currentMap);
-
-
-			resultMap=virtuosoBridgeTools.sum2RelationProfile(resultMap, currentMap);
-			//System.out.println("RESULT MAP !!!!!!!");
-
-			//this.printSortedRelationProfile(resultMap);
-			
-			
-			normalizingFactor++;
+			RelationProfile currentProfile =this.findEntityRelationProfile2(currentUri);		
+			resultProfile.sumOtherProfile(currentProfile);
 
 		}
 		
-		resultMap=virtuosoBridgeTools.normalizeRelationProfile(resultMap, normalizingFactor);
-
-		return resultMap;
+		resultProfile.normalize();
+		
+		return resultProfile;
 	}
 
-	/*
-	 * Compare 2 relationProfile for ordering
-	 */
 
-	public HashMap<String, Double> generateNormalRelationProfile(){
+	public RelationProfile generateNormalRelationProfile(){
 		int normalFactor=findNumbersOfTriplets();
 		ArrayList<String> vars= new ArrayList<String>();	
 		HashMap<String,Double> normalRelationMap = new HashMap<String,Double>();
@@ -273,7 +244,7 @@ public class WikiQuerier {
 			normalRelationMap.put(relation,prob);
 
 		}
-		return normalRelationMap;	
+		return new RelationProfile(normalRelationMap);	
 	}
 
 	/*
@@ -364,8 +335,8 @@ public class WikiQuerier {
 	 */
 	
 	public void generateCatRelationProfileGraph(String catURI){
-		HashMap<String, Double> relationProfile =this.calcRelProfileFromCat(catURI);
-		Iterator<Entry<String, Double>> iter =relationProfile.entrySet().iterator();
+		RelationProfile relationProfile =this.calcRelProfileFromCat(catURI);
+		Iterator<Entry<String, Double>> iter =relationProfile.getProfile().entrySet().iterator();
 
 		catURI=catURI.replace("term:", "cat:");
 		
@@ -442,16 +413,15 @@ public class WikiQuerier {
 	public void findTermSimilarityToCats(String term,LinkedList<String> cats ,SimilarityMeasure measure ){
 		
 		Iterator<String> iter=cats.iterator();
-		HashMap<String, Double> termRelProfile=findEntityRelationProfile2(term);
-		HashMap<String, Double> normalRelProfile=this.generateNormalRelationProfile();
+		RelationProfile termRelProfile=findEntityRelationProfile2(term);
 	
 		
 		while(iter.hasNext()){
 			String currentCat=iter.next();
 			currentCat=currentCat.replace("term:", "cat:");
-			HashMap<String, Double> catRelProfile=this.fetchRelProfileFromGraph(currentCat);
+			RelationProfile catRelProfile=this.fetchRelProfileFromGraph(currentCat);
 		
-			Double currentSimilarity=virtuosoBridgeTools.calcHashMapSimilirity(termRelProfile, catRelProfile,measure);
+			Double currentSimilarity=termRelProfile.findSimilarityLevel(catRelProfile,measure);
 			System.out.println("Current Category :"+currentCat +" Similarity: "+currentSimilarity);
 		
 		}
