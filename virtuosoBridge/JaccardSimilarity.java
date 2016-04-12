@@ -9,7 +9,7 @@ public class JaccardSimilarity extends SimilarityMeasure {
 	}
 
 	@Override
-	public Double calcSimilarity(HashMap<String, Double> set1,HashMap<String, Double> set2) {
+	public Double calcSimilarity(RelationProfile profile1 , RelationProfile profile2,RelationProfile normalProfile) {
 		
 		
 		

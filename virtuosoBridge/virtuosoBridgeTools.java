@@ -14,6 +14,7 @@ import java.util.Set;
 import org.apache.jena.query.QuerySolution;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.tdb.store.Hash;
 
 
 public class virtuosoBridgeTools {
@@ -34,14 +35,6 @@ public class virtuosoBridgeTools {
 		}
 	}
 
-	/*
-	 * Calculate similarity between two relationProfile
-	 */
-
-	static public double calcHashMapSimilirity(HashMap<String, Double> set1 ,HashMap<String, Double> set2 , SimilarityMeasure measure){
-		return measure.calcSimilarity(set1,set2);
-	}
-
 
 	/*
 	 * Get the union of the keySet of 2 hashMap
@@ -56,26 +49,26 @@ public class virtuosoBridgeTools {
 
 
 	/*
-	 *  "Smooth" a relation profile by adding a small probability mass to relations occuring in terms List but missing in set1 
+	 * 
+	 * Get the intersection of 2 HashMap
+	 * 
 	 */
-	public static HashMap<String, Double> smoothRelProfile(HashMap<String, Double> setToSmooth,Set<String> terms) {
-		Double smoothingMass=0.0;
-		Double totalMassAdded=0.0;
-		HashMap<String, Double> resultSet=new HashMap<String,Double>();
-		Iterator<String> iter=terms.iterator();
-		while (iter.hasNext()){
-			String currentTerm=iter.next();
-			Double currentValue=0.0;
+	public static Set<String> getIntersectionFrom2HashMap(HashMap<String, Double> map1 , HashMap<String, Double> map2){
+		Set<String>  resultSet= new HashSet<String>();
 
-			if(setToSmooth.containsKey(currentTerm)){
-				currentValue=setToSmooth.get(currentTerm);
+		Iterator<String> iter = map1.keySet().iterator();
+
+		while (iter.hasNext()){
+			String currentTerm = iter.next();
+
+			if (map2.containsKey(currentTerm)){
+				resultSet.add(currentTerm);
 			}
 
-			resultSet.put(currentTerm, currentValue+smoothingMass);
-			totalMassAdded+=smoothingMass;
 		}
 
-		resultSet=normalizeRelationProfile(resultSet, 1+totalMassAdded);
+
+
 		return resultSet;
 	}
 
@@ -145,14 +138,6 @@ public class virtuosoBridgeTools {
 
 	}
 
-	static public void printSortedRelationProfile(HashMap<String, Double> map){
-		LinkedList<Entry<String,Double>> resultList=new LinkedList<Entry<String,Double>>();
-		resultList=hashMapToSortedLinkedList(map);
-		for(Entry<String,Double> e:resultList){
-			System.out.println(e.getKey()+" "+e.getValue());
-		}
-	}
-
 
 	//Check the difference between 2 relationVectors
 	static public HashMap<String, Double> compare2RelationProfile(HashMap<String, Double> set1 ,HashMap<String, Double> set2){
@@ -172,62 +157,20 @@ public class virtuosoBridgeTools {
 		return resultMap;
 	}
 
-	
-	/*
-	 *  Sum 2 relations profile
-	 */
-	static public HashMap<String, Double> sum2RelationProfile(HashMap<String, Double> map1 , HashMap<String, Double> map2){
-		HashMap<String, Double> resultMap=map1;
+	static String prefixedTermToFullURI(String prefix){
+		String resultString="";
 
-		Iterator<Entry<String, Double>> iter = map2.entrySet().iterator();
-
-		while(iter.hasNext()){
-			Entry<String, Double> currentEntry = iter.next();
-			String key = currentEntry.getKey();
-			Double val1 = currentEntry.getValue();
-			if (resultMap.containsKey(key)){
-				Double val2 = resultMap.get(key);
-				resultMap.put(key, (val1+val2));
-			}else{
-				resultMap.put(key, val1);
-			}
+		if(prefix.contains("term:")){
+			resultString=prefix.replaceFirst("term:", "http://test/term/");
+		}else if(prefix.contains("relation:")){
+			resultString=prefix.replaceFirst("relation:", "http://test/relation/");
 		}
 
-		return resultMap;
+
+		return resultString;
 	}
 
 
-	//Normalize HashMap based on totalCount
-	static HashMap<String, Double> normalizeRelationProfile(HashMap<String, Double> map ){
-
-		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
-		HashMap<String, Double> resultMap = new HashMap<String , Double>();
-		Double sum =0.0;
-		while(iter.hasNext()){
-			Entry<String,Double> currentEntry=iter.next();
-			sum+=currentEntry.getValue();
-		}
-		resultMap=normalizeRelationProfile(map,sum);
-		return resultMap;
-
-	}
-
-
-	//Normalize HashMap by normalFactor
-	static HashMap<String, Double> normalizeRelationProfile(HashMap<String, Double> map , Double normalFactor){
-		Iterator<Entry<String, Double>> iter=map.entrySet().iterator();
-		HashMap<String, Double> resultMap = new HashMap<String , Double>();
-		while(iter.hasNext()){
-			Entry<String, Double> currentEntry = iter.next();
-			String key = currentEntry.getKey();
-			Double val1 = currentEntry.getValue();
-			resultMap.put(key, val1/normalFactor);
-
-		}
-		return resultMap;
-	}
-
-	
 	/*
 	 * Take a resultSet as input and output a HashMap corresponding to RelationProfile
 	 */
@@ -240,5 +183,17 @@ public class virtuosoBridgeTools {
 
 		}
 	}
+	
+	static void removeSet2From1AndClean(LinkedList<String> set1,HashSet<String> set2){
+		
+		Iterator<String> iter=set2.iterator();
+		
+		
+		while(iter.hasNext()){
+			set1.remove("<"+iter.next()+">");
+		}
+		
+	}
+	
 
 }

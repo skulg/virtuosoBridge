@@ -1,23 +1,26 @@
 package virtuosoBridge;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 
-public class CosineSimilarity extends SimilarityMeasure {
+public class MyMeasure extends SimilarityMeasure {
 
-	public CosineSimilarity() {
-		super();
+	public MyMeasure() {
+		// TODO Auto-generated constructor stub
 	}
 
 	@Override
-	public Double calcSimilarity(RelationProfile profile1,RelationProfile profile2,RelationProfile normalDistribution) {
-
-		Set<String> terms=virtuosoBridgeTools.getAllKeysFrom2HashMap(profile1.getProfile(), profile2.getProfile());
+	public Double calcSimilarity(RelationProfile profile1, RelationProfile profile2, RelationProfile normalDistribution) {
 
 		
-		profile1.smooth(terms, 0.0);
-		profile2.smooth(terms, 0.0);
+		
+		profile1.smooth2Profiles(profile2, 0.0);
+		
+		
+		profile1.removeRelationFromProfile("relation:être");
+		profile2.removeRelationFromProfile("relation:être");
+		
+		Set<String> terms=virtuosoBridgeTools.getIntersectionFrom2HashMap(profile1.getProfile(), profile2.getProfile());
 
 	
 
@@ -38,7 +41,6 @@ public class CosineSimilarity extends SimilarityMeasure {
 		Double cosSimilarity=numerator/denominator;
 
 		return cosSimilarity;
-
 	}
 
 }

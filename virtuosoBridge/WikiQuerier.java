@@ -1,9 +1,11 @@
 package virtuosoBridge;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.management.relation.Relation;
 
@@ -62,6 +64,9 @@ public class WikiQuerier {
 	 * Return the relation profile of Entity corresponding to URI
 	 */
 	public RelationProfile findEntityRelationProfile2(String uri){
+
+		System.out.println("Generating profile for "+ uri);
+
 		int normalFactor = findTotalCountOfTerm(uri);
 
 		ArrayList<String> vars= new ArrayList<String>();	
@@ -82,6 +87,7 @@ public class WikiQuerier {
 
 		}
 		RelationProfile resultProfile=new RelationProfile(relationMap);
+		resultProfile.setName(uri);
 		return resultProfile;	
 	}
 
@@ -142,15 +148,15 @@ public class WikiQuerier {
 
 		System.out.println("Calculating Relations Profiles from List");
 		RelationProfile resultProfile=this.fetchSumNormalizeRelationsProfiles(list);
-
+		resultProfile.setName(uri);
 		return resultProfile;
 	}
 
-	
-	
+
+
 	//Fetch cached relation graph belonging to URI category instead of calculating from terms.
 	public RelationProfile fetchRelProfileFromGraph(String uri){
-		
+
 		String relationProfileGraph="http://wikiDataRelProfile";
 
 		ArrayList<String> vars= new ArrayList<String>();	
@@ -166,14 +172,14 @@ public class WikiQuerier {
 		ResultSet results=this.runQuery();
 
 		virtuosoBridgeTools.resultSetToRelationMap(relationMap, results);
+		RelationProfile resultProfile=new RelationProfile(relationMap);
+		resultProfile.setName(uri);
+		return 	resultProfile;
 
-
-		return new RelationProfile(relationMap);	
-		
 	}
-	
-	
-	
+
+
+
 	/*
 	 * Return a list of URI belonging to category
 	 */
@@ -201,31 +207,37 @@ public class WikiQuerier {
 	}
 
 
-	
+
 
 	/*
 	 *  Fetch relations profiles of List and sum them up and normalize on the way
 	 */
 
-	 private RelationProfile fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
+	private RelationProfile fetchSumNormalizeRelationsProfiles(LinkedList<String> list){
 		RelationProfile resultProfile = new RelationProfile();
 
 		Iterator<String> iter =list.iterator();
-		
+
 		while (iter.hasNext()){
-			String currentUri="<"+iter.next()+">";
+			String currentUri=iter.next();
+			if(!(currentUri.charAt(0)=='<')){
+				currentUri="<"+currentUri+">";
+			}
 			RelationProfile currentProfile =this.findEntityRelationProfile2(currentUri);		
 			resultProfile.sumOtherProfile(currentProfile);
 
 		}
-		
+
 		resultProfile.normalize();
-		
+
 		return resultProfile;
 	}
 
 
 	public RelationProfile generateNormalRelationProfile(){
+
+		System.out.println("Generating Normal Relation Profile");
+
 		int normalFactor=findNumbersOfTriplets();
 		ArrayList<String> vars= new ArrayList<String>();	
 		HashMap<String,Double> normalRelationMap = new HashMap<String,Double>();
@@ -244,7 +256,10 @@ public class WikiQuerier {
 			normalRelationMap.put(relation,prob);
 
 		}
-		return new RelationProfile(normalRelationMap);	
+		RelationProfile resultProfile=new RelationProfile(normalRelationMap);	
+		resultProfile.setName("NormalProfile");
+
+		return resultProfile;
 	}
 
 	/*
@@ -311,35 +326,35 @@ public class WikiQuerier {
 
 	}
 
-	
+
 	public void generateListCatRelationProfileGraph(LinkedList<String> list){
-		
+
 		this.clearRelProfileGraph();
-		
+
 		Iterator<String> iter=list.iterator();
-		
+
 		while(iter.hasNext()){
 			String cat=iter.next();
 			System.out.println("");
 			System.out.println("Generating graph for "+cat);
 			generateCatRelationProfileGraph(cat);
-			
+
 		}
-		
-		
-		
+
+
+
 	}
-	
+
 	/*
 	 * Generate the relationProfile of a category and add it to relationGraph for quicker future access.
 	 */
-	
+
 	public void generateCatRelationProfileGraph(String catURI){
 		RelationProfile relationProfile =this.calcRelProfileFromCat(catURI);
 		Iterator<Entry<String, Double>> iter =relationProfile.getProfile().entrySet().iterator();
 
 		catURI=catURI.replace("term:", "cat:");
-		
+
 		while(iter.hasNext()){
 			String query=prefix+" INSERT INTO GRAPH <http://wikiDataRelProfile> {";
 
@@ -349,7 +364,7 @@ public class WikiQuerier {
 			String tripleToAdd=catURI+" <"+currentRelation + "> " + currentValue;
 			query+=tripleToAdd+". ";
 			query+="}";
-			
+
 			//System.out.println(query);
 
 			VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
@@ -359,7 +374,7 @@ public class WikiQuerier {
 
 	}
 
-	
+
 	/*
 	 * Generate relationGraph for a term for quicker access.
 	 * 
@@ -408,27 +423,99 @@ public class WikiQuerier {
 		return resultList;
 	}
 
-	
-	
-	public void findTermSimilarityToCats(String term,LinkedList<String> cats ,SimilarityMeasure measure ){
-		
+
+
+	public HashMap<String,Double> findTermSimilarityToCats(String term,LinkedList<String> cats ,SimilarityMeasure measure ){
+
 		Iterator<String> iter=cats.iterator();
 		RelationProfile termRelProfile=findEntityRelationProfile2(term);
-	
-		
+		//RelationProfile normalProfile=generateNormalRelationProfile();
+		RelationProfile normalProfile=null; //TEMP TO SPEED UP SINCE MYMeasure Doesnt need normalProfile
+		HashMap<String,Double> similarityResults= new HashMap<String,Double>();
 		while(iter.hasNext()){
 			String currentCat=iter.next();
 			currentCat=currentCat.replace("term:", "cat:");
 			RelationProfile catRelProfile=this.fetchRelProfileFromGraph(currentCat);
-		
-			Double currentSimilarity=termRelProfile.findSimilarityLevel(catRelProfile,measure);
-			System.out.println("Current Category :"+currentCat +" Similarity: "+currentSimilarity);
-		
+
+			Double currentSimilarity=termRelProfile.findSimilarityLevel(catRelProfile,normalProfile,measure);
+			similarityResults.put(currentCat, currentSimilarity);
 		}
-		
+		return similarityResults;
+
 	}
-	
-	
+
+	public Entry<String,Double> assignCatToTerm(String term , LinkedList<String> cats , SimilarityMeasure measure){
+		Entry<String,Double> catAssigned=null;
+		HashMap<String, Double> similarityResults=findTermSimilarityToCats(term, cats, measure);
+
+		Iterator <Entry<String,Double>> iter = virtuosoBridgeTools.hashMapToSortedLinkedList(similarityResults).iterator();
+
+		if (iter.hasNext()){
+			catAssigned=iter.next();
+		}
+
+
+		return catAssigned;
+	}
+
+
+	public void assignAllTermsACat(LinkedList<String> cats,SimilarityMeasure measure){
+		System.out.println("Clearing old Assignement Graph");
+		this.clearAssignementGraph();
+
+		System.out.println("Fetching All terms to classify");
+
+		LinkedList<String> list=this.fetchAllDistinctArg1Terms();
+
+		System.out.println("Done");
+		System.out.println("");
+
+		System.out.println("Starting Classification");
+
+		final long startTime = System.nanoTime();
+		int totalItemCount=list.size();
+		int nbItemsProcessed=0;
+
+		Iterator<String> iter=list.iterator();
+		while(iter.hasNext()){
+			String currentTerm =iter.next();
+			final long duration = (System.nanoTime() - startTime)/1000000000;
+			System.out.println("Treating "+currentTerm + " "+nbItemsProcessed+"/"+totalItemCount);
+
+			Entry<String,Double> assignedCatAndSimilarity=this.assignCatToTerm(currentTerm, cats, measure);
+			addCatAssignementToGraph(currentTerm,assignedCatAndSimilarity);
+			nbItemsProcessed++;
+			Long eta=totalItemCount/nbItemsProcessed*duration;
+			System.out.println(""+nbItemsProcessed+"/"+totalItemCount + " time:" + duration + " eta:"+eta);
+
+			System.out.println("");
+		}
+		System.out.println("Done");
+		System.out.println("");
+
+	}
+
+	public void addCatAssignementToGraph(String termClassified , Entry<String,Double> assignementEntry){
+
+
+		String query=prefix+" INSERT INTO GRAPH <http://wikiDataCatAssignement> {";
+
+
+		String cat = assignementEntry.getKey();
+		Double similarityLevel=assignementEntry.getValue();
+
+		String tripleToAdd=termClassified+" "+cat + " " + similarityLevel;
+		query+=tripleToAdd+". ";
+		query+="}";
+
+		System.out.println(tripleToAdd);
+
+		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
+		vur.exec(); 
+
+	}
+
+
 	/*
 	 *  Generate the relation profile of all terms in database and add them to the relationGraph for quicker access.
 	 */
@@ -454,6 +541,132 @@ public class WikiQuerier {
 		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(str, set);
 		vur.exec();
 	}
+
+	/*
+	 * Clear the AssignementGraph 
+	 */
+	public void clearAssignementGraph() {
+		String str = "CLEAR GRAPH <http://wikiDataCatAssignement>";
+		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(str, set);
+		vur.exec();
+	}
+
+	/*
+	 * Create terms set for terms not in cats list
+	 */
+	public LinkedList<String> createOthersCatTermSet(LinkedList<String> cats){
+
+
+		LinkedList<String> resultList =this.fetchAllDistinctArg1Terms(); //Fetch All terms
+
+		System.out.println(resultList.size());
+		
+		Iterator<String> iter= cats.iterator();
+
+		HashSet<String> cummulativeList=new HashSet<String>();
+		while(iter.hasNext()){
+			String currentCat=iter.next();
+			LinkedList<String> currentList=this.fetchAllEntitiesBelongingToCat(currentCat);
+			cummulativeList.addAll(currentList);
+		}
+
+		System.out.println(cummulativeList.size());
+		
+		virtuosoBridgeTools.removeSet2From1AndClean(resultList, cummulativeList); //Remove term assigned to cat from global list
+
+		System.out.println(resultList.size());
+		return resultList;
+
+	}
+
+	/*
+	 * Generate otherCatRelProfile
+	 */
+
+	public RelationProfile genOtherCatRelProfile(LinkedList<String> cats){
+
+		LinkedList<String> otherTerms =this.createOthersCatTermSet(cats);
+
+		RelationProfile resultProfile=this.fetchSumNormalizeRelationsProfiles(otherTerms);
+		resultProfile.setName("Other");
+		return resultProfile;
+
+
+	}
+	
+	/*
+	 * Generate otherCatRelProfile
+	 * Faster implementation when number of terms in other cats is large
+	 */
+
+	public RelationProfile genOtherCatRelProfilev2(LinkedList<String> cats){
+
+		
+		Iterator<String> iter = cats.iterator();
+		RelationProfile catNormalRelProfile=new RelationProfile();
+		while(iter.hasNext()){
+			String currentCat=iter.next();
+			RelationProfile currentProfile=this.fetchRelProfileFromGraph(currentCat);
+			catNormalRelProfile.sumOtherProfile(currentProfile);
+			
+			
+		}
+		catNormalRelProfile.normalize();
+		RelationProfile normalProfile = this.generateNormalRelationProfile();
+		
+		
+
+		RelationProfile resultProfile=new RelationProfile();
+		
+		catNormalRelProfile.smooth2Profiles(normalProfile, 0.0);
+		Iterator<Entry<String,Double>> iter2=catNormalRelProfile.getProfile().entrySet().iterator();
+		
+		while(iter2.hasNext()){
+			Entry<String,Double> currentEntry = iter2.next();
+			String currentKey=currentEntry.getKey();
+			Double currentValue=currentEntry.getValue();
+			Double normalValue=normalProfile.getProfile().get(currentKey);
+			Double resultValue=Math.abs(normalValue-currentValue);
+			resultProfile.getProfile().put(currentKey, resultValue);
+		}
+		resultProfile.normalize();
+		
+		iter2=resultProfile.getProfile().entrySet().iterator();
+		
+		while(iter2.hasNext()){
+			
+			String query=prefix+" INSERT INTO GRAPH <http://wikiDataRelProfile> {";
+
+			Entry<String,Double>currentEntry=iter2.next();
+			String currentRelation=currentEntry.getKey();
+			Double currentValue=currentEntry.getValue();
+			String tripleToAdd="cat:OTHERcATS <"+currentRelation + "> " + currentValue;
+			query+=tripleToAdd+". ";
+			query+="}";
+
+			//System.out.println(query);
+
+			VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
+			vur.exec(); 
+			
+			
+			
+		}
+		
+		
+		resultProfile.setName("Other");
+		return resultProfile;
+
+		
+		
+		
+		
+		
+		
+		
+
+	}
+	
 
 }
 

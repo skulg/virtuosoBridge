@@ -9,6 +9,6 @@ public abstract class SimilarityMeasure {
 
 	}
 	
-	public abstract Double calcSimilarity(HashMap<String,Double> set1,HashMap<String,Double> set2);
+	public abstract Double calcSimilarity(RelationProfile profile1,RelationProfile profile2,RelationProfile normalProfile);
 
 }
