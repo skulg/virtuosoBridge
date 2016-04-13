@@ -65,7 +65,7 @@ public class WikiQuerier {
 	 */
 	public RelationProfile findEntityRelationProfile2(String uri){
 
-		System.out.println("Generating profile for "+ uri);
+		//System.out.println("Generating profile for "+ uri);
 
 		int normalFactor = findTotalCountOfTerm(uri);
 
@@ -142,7 +142,7 @@ public class WikiQuerier {
 
 		LinkedList<String> list= new LinkedList<String>();
 
-		System.out.println("Fetching entities belonging to :"+uri);
+		//System.out.println("Fetching entities belonging to :"+uri);
 		list=fetchAllEntitiesBelongingToCat(uri);
 
 
@@ -330,14 +330,17 @@ public class WikiQuerier {
 	public void generateListCatRelationProfileGraph(LinkedList<String> list){
 
 		this.clearRelProfileGraph();
-
+		int totalCount =list.size();
+		int count=0;
 		Iterator<String> iter=list.iterator();
 
 		while(iter.hasNext()){
 			String cat=iter.next();
 			System.out.println("");
 			System.out.println("Generating graph for "+cat);
+			System.out.println(""+count+"/"+totalCount);
 			generateCatRelationProfileGraph(cat);
+			count++;
 
 		}
 
@@ -591,7 +594,6 @@ public class WikiQuerier {
 		resultProfile.setName("Other");
 		return resultProfile;
 
-
 	}
 	
 	/*
@@ -600,22 +602,18 @@ public class WikiQuerier {
 	 */
 
 	public RelationProfile genOtherCatRelProfilev2(LinkedList<String> cats){
-
-		
+	
 		Iterator<String> iter = cats.iterator();
 		RelationProfile catNormalRelProfile=new RelationProfile();
 		while(iter.hasNext()){
 			String currentCat=iter.next();
 			RelationProfile currentProfile=this.fetchRelProfileFromGraph(currentCat);
 			catNormalRelProfile.sumOtherProfile(currentProfile);
-			
-			
+					
 		}
 		catNormalRelProfile.normalize();
 		RelationProfile normalProfile = this.generateNormalRelationProfile();
-		
-		
-
+				
 		RelationProfile resultProfile=new RelationProfile();
 		
 		catNormalRelProfile.smooth2Profiles(normalProfile, 0.0);
@@ -648,26 +646,65 @@ public class WikiQuerier {
 
 			VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
 			vur.exec(); 
-			
-			
-			
+					
 		}
-		
 		
 		resultProfile.setName("Other");
 		return resultProfile;
 
 		
+	}
+	
+	public LinkedList<String> manualCatsList(){
+		LinkedList<String> catToCalcRelProfile= new LinkedList<String>();
+		catToCalcRelProfile.add("term:une_ville");
+		catToCalcRelProfile.add("term:un_acteur");
+		catToCalcRelProfile.add("term:un_village");
+		catToCalcRelProfile.add("term:un_film_américain");
+		catToCalcRelProfile.add("term:un_écrivain");
+		catToCalcRelProfile.add("term:un_acteur_américain");
+		catToCalcRelProfile.add("term:un_joueur_professionnel_de_hockey");
+		catToCalcRelProfile.add("term:un_journaliste");
+		catToCalcRelProfile.add("term:un_peintre");
+		catToCalcRelProfile.add("term:un_film");
+		catToCalcRelProfile.add("term:un_chanteur");
+		catToCalcRelProfile.add("term:une_chanson");
+		catToCalcRelProfile.add("term:un_joueur");
+		catToCalcRelProfile.add("term:un_musicien");
+		catToCalcRelProfile.add("term:un_groupe_de_musique");
+		catToCalcRelProfile.add("term:un_philosophe");		
+		catToCalcRelProfile.add("term:un_professeur");
+		catToCalcRelProfile.add("term:une_chanteuse");
+		
+		catToCalcRelProfile.add("term:un_président");
 		
 		
-		
-		
-		
-		
-
+		return catToCalcRelProfile;
 	}
 	
 
+	public LinkedList<String> findTopCats(int limit){
+		LinkedList<String> resultList = new LinkedList<String>();
+		
+		ArrayList<String> vars= new ArrayList<String>();	
+		vars.add("p");
+		vars.add("pCount");
+		
+		this.select="SELECT ?p (count(?p) AS ?pCount)";
+		this.where="WHERE {?s relation:être ?p. FILTER ( regex (str(?p), '/un[e]*_') ) }";
+		this.params="GROUP BY ?p ORDER BY DESC(?pCount) LIMIT "+limit;
+		ResultSet results=this.runQuery();
+		//virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
+		while (results.hasNext()) {
+			QuerySolution result = results.nextSolution();
+			String category="<"+result.get("p").toString()+">";
+			resultList.add(category);
+		}
+		
+		return resultList;
+		
+	}
+	
 }
 
 

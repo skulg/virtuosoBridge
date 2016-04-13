@@ -32,27 +32,7 @@ public class WikiBridgeMain {
 			querier.testingOnTestGraph();
 		}
 		
-		LinkedList<String> catToCalcRelProfile= new LinkedList<String>();
-		catToCalcRelProfile.add("term:une_ville");
-		catToCalcRelProfile.add("term:un_acteur");
-		catToCalcRelProfile.add("term:un_village");
-		catToCalcRelProfile.add("term:un_film_américain");
-		catToCalcRelProfile.add("term:un_écrivain");
-		catToCalcRelProfile.add("term:un_acteur_américain");
-		catToCalcRelProfile.add("term:un_joueur_professionnel_de_hockey");
-		catToCalcRelProfile.add("term:un_journaliste");
-		catToCalcRelProfile.add("term:un_peintre");
-		catToCalcRelProfile.add("term:un_film");
-		catToCalcRelProfile.add("term:un_chanteur");
-		catToCalcRelProfile.add("term:une_chanson");
-		catToCalcRelProfile.add("term:un_joueur");
-		catToCalcRelProfile.add("term:un_musicien");
-		catToCalcRelProfile.add("term:un_groupe_de_musique");
-		catToCalcRelProfile.add("term:un_philosophe");		
-		catToCalcRelProfile.add("term:un_professeur");
-		catToCalcRelProfile.add("term:une_chanteuse");
-		
-		catToCalcRelProfile.add("term:un_président");
+		LinkedList<String> catToCalcRelProfile= querier.findTopCats(1000);
 		
 	
 		//Regenerate Graph of category RelationGraph
@@ -71,7 +51,7 @@ public class WikiBridgeMain {
 		//RelationProfile normalProfile= querier.generateNormalRelationProfile();
 		
 		//Queries
-		String termToCompare ="term:Bruce_Willis";
+		String termToCompare ="term:James_Bond";
 		String termToCompare2 ="term:Madonna";
 		
 		HashMap<String, Double>  similarityMap=querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile,new MyMeasure());
@@ -85,9 +65,6 @@ public class WikiBridgeMain {
 		//System.out.println(catAssigned);
 		
 		new RelationProfile(similarityMap).printSortedProfile();
-		
-		
-		
 		
 		
 		
