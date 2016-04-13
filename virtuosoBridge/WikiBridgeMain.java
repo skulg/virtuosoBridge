@@ -40,7 +40,7 @@ public class WikiBridgeMain {
 		
 		//RelationProfile otherCatProfile=querier.genOtherCatRelProfilev2(catToCalcRelProfile);
 		//otherCatProfile.printSortedProfile();
-		catToCalcRelProfile.add("term:OTHERcATS");
+		//catToCalcRelProfile.add("term:OTHERcATS");
 		
 		// get Mean Relation Distribution
 		//HashMap<String, Double> normalRelationDistributionMap=querier.generateNormalRelationProfile();
@@ -54,19 +54,26 @@ public class WikiBridgeMain {
 		String termToCompare ="term:James_Bond";
 		String termToCompare2 ="term:Madonna";
 		
-		HashMap<String, Double>  similarityMap=querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile,new MyMeasure());
-		//HashMap<String, Double>  similarityMap=querier.findTermSimilarityToCats(termToCompare2, catToCalcRelProfile,new TestingStuffSimilarity());
-		//HashMap<String, Double>  similarityMap=querier.findTermSimilarityToCats(termToCompare2, catToCalcRelProfile,new CosineSimilarity());
+		//HashMap<String, Double>  similarityMap=querier.findTermSimilarityToCats(termToCompare2, catToCalcRelProfile,new MyMeasure());
+		//new RelationProfile(similarityMap).printSortedProfile();
+		
+		
+		querier.isCatAssigned(termToCompare2);
+		
+		LinkedList<String> termsToClassify=new LinkedList<String>();
+		termsToClassify.add("term:T");
+		termsToClassify.add("term:Madonna");
+		querier.resumeTermAssignementLinkedList(termsToClassify,catToCalcRelProfile, new MyMeasure());
+		
+		
+		//querier.loadCatsRelationProfileFromGraph();
+		
 		
 		
 		//Entry<String, Double> catAssigned = querier.assignCatToTerm(termToCompare, catToCalcRelProfile, new MyMeasure());
 		
 		
 		//System.out.println(catAssigned);
-		
-		new RelationProfile(similarityMap).printSortedProfile();
-		
-		
 		
 		
 		

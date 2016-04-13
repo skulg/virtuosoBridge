@@ -13,10 +13,8 @@ public class MyMeasure extends SimilarityMeasure {
 	public Double calcSimilarity(RelationProfile profile1, RelationProfile profile2, RelationProfile normalDistribution) {
 
 		
-		
 		profile1.smooth2Profiles(profile2, 0.0);
-		
-		
+				
 		profile1.removeRelationFromProfile("relation:être");
 		profile2.removeRelationFromProfile("relation:être");
 		
