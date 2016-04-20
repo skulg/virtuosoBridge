@@ -10,26 +10,31 @@ public class MyMeasure extends SimilarityMeasure {
 	}
 
 	@Override
-	public Double calcSimilarity(RelationProfile profile1, RelationProfile profile2, RelationProfile normalDistribution) {
+	public Double calcSimilarity(RelationProfile inputProfile1, RelationProfile inputProfile2, RelationProfile normalDistribution) {
 
+		
+		RelationProfile profile1=new RelationProfile(inputProfile1);
+		RelationProfile profile2=new RelationProfile(inputProfile2);
 		
 		profile1.smooth2Profiles(profile2, 0.0);
 				
 		profile1.removeRelationFromProfile("relation:être");
 		profile2.removeRelationFromProfile("relation:être");
 		
-		Set<String> terms=virtuosoBridgeTools.getIntersectionFrom2HashMap(profile1.getProfile(), profile2.getProfile());
-
+		Set<String> terms=profile1.getProfile().keySet();
 	
 
 		Iterator<String> iter=terms.iterator();
 		Double numerator=0.0;
 		Double aSquared=0.0;
 		Double bSquared=0.0;
+		Double val1;
+		Double val2;
+		String currentEntry;
 		while (iter.hasNext()){
-			String currentEntry=iter.next();
-			Double val1=profile1.getProfile().get(currentEntry);
-			Double val2=profile2.getProfile().get(currentEntry);
+			currentEntry=iter.next();
+			val1=profile1.getProfile().get(currentEntry);
+			val2=profile2.getProfile().get(currentEntry);
 			numerator+=(val1*val2);
 			aSquared+=val1*val1;
 			bSquared+=val2*val2;

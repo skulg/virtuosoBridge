@@ -7,10 +7,7 @@ import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import javax.management.relation.Relation;
-
-import jdk.nashorn.internal.ir.TernaryNode;
-
+import org.apache.jena.base.Sys;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
@@ -36,7 +33,7 @@ public class WikiQuerier {
 	private String where ="";
 	private String params="";
 	private String graph="";
-
+	private HashMap<String , RelationProfile> cachedCatRelProfile;
 
 	public WikiQuerier(String user,String pass, String server , String graph){
 		this.user=user;
@@ -156,7 +153,7 @@ public class WikiQuerier {
 
 
 
-	//Fetch cached relation graph belonging to URI category instead of calculating from terms.
+	//Fetch relation graph belonging to URI category instead of calculating from terms.
 	public RelationProfile fetchRelProfileFromGraph(String uri){
 
 		String relationProfileGraph="http://wikiDataRelProfile";
@@ -180,6 +177,22 @@ public class WikiQuerier {
 
 	}
 
+	//Fetch cached relation graph 
+	public RelationProfile fetchRelProfileFromHashMap(String uri){
+		if (this.cachedCatRelProfile==null){
+			System.out.println("Relation profiles for categories not present in cache. Fetching please be patient.");
+			this.cachedCatRelProfile=this.loadCatsRelationProfileFromGraph();
+			System.out.println("Fetching Done.");
+			
+		}
+		RelationProfile returnProfile=this.cachedCatRelProfile.get(uri);
+	
+		
+		return returnProfile;
+		
+		
+	}
+	
 
 
 	/*
@@ -427,6 +440,34 @@ public class WikiQuerier {
 
 		return resultList;
 	}
+	public LinkedList<String> fetchDistinctArg1TermsInFreqOrder(int nbToFetch){
+
+		
+		System.out.println("Fetching "+nbToFetch +" most frequent terms");
+		
+		LinkedList<String> resultList = new LinkedList<String>();
+		ArrayList<String> vars= new ArrayList<String>();
+		vars.add("a");
+		
+		
+		this.select="SELECT * ";
+		this.where="WHERE {SELECT DISTINCT ?a WHERE {?a ?b ?c} GROUP BY ?a ORDER BY DESC (count (?a)) }";
+		this.params="LIMIT "+nbToFetch;
+		
+		
+		
+		ResultSet results=this.runQuery();
+		//somewhatPrettyPrint(vars, results);
+		while (results.hasNext()) {
+			QuerySolution result = results.nextSolution();
+			String entity="<"+result.get("a").toString()+">";
+			resultList.add(entity);
+
+		}
+
+		return resultList;
+	}
+	
 
 
 
@@ -437,18 +478,39 @@ public class WikiQuerier {
 		//RelationProfile normalProfile=generateNormalRelationProfile();
 		RelationProfile normalProfile=null; //TEMP TO SPEED UP SINCE MYMeasure Doesnt need normalProfile
 		HashMap<String,Double> similarityResults= new HashMap<String,Double>();
+		String currentCat;
+		RelationProfile catRelProfile;
+	
 		while(iter.hasNext()){
-			String currentCat=iter.next();
+			currentCat=iter.next();
 			currentCat=currentCat.replace("term:", "cat:");
-			RelationProfile catRelProfile=this.fetchRelProfileFromGraph(currentCat);
-
+			catRelProfile=this.fetchRelProfileFromHashMap(currentCat);
+			
 			Double currentSimilarity=termRelProfile.findSimilarityLevel(catRelProfile,normalProfile,measure);
 			similarityResults.put(currentCat, currentSimilarity);
+			
 		}
 		return similarityResults;
 
 	}
 
+	public void assignAndAddToGraphCatSimilarity(String term ,LinkedList<String> cats , SimilarityMeasure measure , int nbOfCatToAssignToTerm ){
+		Entry<String,Double> catAssigned=null;
+		HashMap<String, Double> similarityResults=findTermSimilarityToCats(term, cats, measure);
+
+		Iterator <Entry<String,Double>> iter = virtuosoBridgeTools.hashMapToSortedLinkedList(similarityResults).iterator();
+		int count=0;
+		
+		while(iter.hasNext() & count< nbOfCatToAssignToTerm){		
+			catAssigned=iter.next();
+			this.addCatTermSimilarityToGraph(term, catAssigned);
+			count++;
+		}
+		
+		
+	}
+	
+	
 	public Entry<String,Double> assignCatToTerm(String term , LinkedList<String> cats , SimilarityMeasure measure){
 		Entry<String,Double> catAssigned=null;
 		HashMap<String, Double> similarityResults=findTermSimilarityToCats(term, cats, measure);
@@ -497,23 +559,47 @@ public class WikiQuerier {
 		
 	}
 	
+	
+	public void resumeTermCatSimilarityLinkedList (LinkedList<String> termsToClassify,LinkedList<String> cats,SimilarityMeasure measure ,int nbOfCatsToAssignPerTerms){
+		boolean foundResumingSpot=false;
+		
+		while (!foundResumingSpot &termsToClassify.size()>0 ){
+			if (this.isCatSimilarityInGraph(termsToClassify.getFirst())){
+				System.out.println(termsToClassify.removeFirst() + " was already classified skipping");
+			}else{
+				foundResumingSpot=true;
+			}
+		}
+		
+		assignAllTermsInListACatSimilarity(termsToClassify, cats, measure,nbOfCatsToAssignPerTerms);
+		
+	}
+	
+	
+	
 	public void assignAllTermsInListACat(LinkedList<String> termsToClassify,LinkedList<String> cats,SimilarityMeasure measure){
 		System.out.println("Starting Classification");
 
 		final long startTime = System.nanoTime();
 		int totalItemCount=termsToClassify.size();
 		int nbItemsProcessed=0;
-
+		long duration;
+		Long eta;
+		Entry<String,Double> assignedCatAndSimilarity;
 		Iterator<String> iter=termsToClassify.iterator();
+		String currentTerm;
 		while(iter.hasNext()){
-			String currentTerm =iter.next();
-			final long duration = (System.nanoTime() - startTime)/1000000000;
+			currentTerm =iter.next();
+			duration = (System.nanoTime() - startTime)/1000000000;
 			System.out.println("Treating "+currentTerm + " "+nbItemsProcessed+"/"+totalItemCount);
 
-			Entry<String,Double> assignedCatAndSimilarity=this.assignCatToTerm(currentTerm, cats, measure);
+			
+			
+			assignedCatAndSimilarity=this.assignCatToTerm(currentTerm, cats, measure);
+			
 			addCatAssignementToGraph(currentTerm,assignedCatAndSimilarity);
 			nbItemsProcessed++;
-			Long eta=totalItemCount/nbItemsProcessed*duration;
+			eta=totalItemCount/nbItemsProcessed*duration;
 			System.out.println(""+nbItemsProcessed+"/"+totalItemCount + " time:" + duration + " eta:"+eta);
 
 			System.out.println("");
@@ -522,6 +608,43 @@ public class WikiQuerier {
 		System.out.println("");
 		
 	}
+	
+	
+	public void assignAllTermsInListACatSimilarity(LinkedList<String> termsToClassify,LinkedList<String> cats,SimilarityMeasure measure , int nbOfCatsToAssignPerTerms){
+		
+		System.out.println("");
+		System.out.println("Starting Cat Similarity calculation");
+		final long startTime = System.nanoTime();
+		int totalItemCount=termsToClassify.size();
+		int nbItemsProcessed=0;
+		long duration;
+		Long eta;
+
+		
+		Iterator<String> iter=termsToClassify.iterator();
+		String currentTerm;
+		
+		while(iter.hasNext()){
+			currentTerm =iter.next();
+			duration = (System.nanoTime() - startTime)/1000000000;
+			System.out.println("");
+			System.out.println("========================");
+			System.out.println("Treating "+currentTerm);
+
+			
+			
+			this.assignAndAddToGraphCatSimilarity(currentTerm,cats , measure, nbOfCatsToAssignPerTerms);
+			
+			nbItemsProcessed++;
+			eta=totalItemCount/nbItemsProcessed*duration;
+			System.out.println(""+nbItemsProcessed+"/"+totalItemCount + " time:" + duration + " eta:"+eta);
+			System.out.println("");
+		}
+		System.out.println("Done");
+		System.out.println("");
+		
+	}
+	
 	
 
 	public void addCatAssignementToGraph(String termClassified , Entry<String,Double> assignementEntry){
@@ -539,9 +662,34 @@ public class WikiQuerier {
 
 		System.out.println(tripleToAdd);
 
+		if(similarityLevel.isNaN()){
+			similarityLevel=0.0;
+		}
+		
 		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
 		vur.exec(); 
 
+	}
+	
+	public void addCatTermSimilarityToGraph(String termClassified, Entry<String,Double> assignementEntry){
+		String query=prefix+" INSERT INTO GRAPH <http://wikiDataCatSimilarity> {";
+
+
+		String cat = assignementEntry.getKey();
+		Double similarityLevel=assignementEntry.getValue();
+
+		String tripleToAdd=termClassified+" "+cat + " " + similarityLevel;
+		query+=tripleToAdd+". ";
+		query+="}";
+
+		System.out.println(tripleToAdd);
+
+		if(similarityLevel.isNaN()){
+			similarityLevel=0.0;
+		}
+		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
+		vur.exec(); 
+		
 	}
 
 
@@ -580,6 +728,13 @@ public class WikiQuerier {
 		vur.exec();
 	}
 
+	public void clearCatSimilarityGraph() {
+		String str = "CLEAR GRAPH <http://wikiDataCatSimilarity>";
+		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(str, set);
+		vur.exec();
+	}
+	
+	
 	/*
 	 * Create terms set for terms not in cats list
 	 */
@@ -741,7 +896,7 @@ public class WikiQuerier {
 		vars.add("?prob");
 
 		this.select="SELECT ?cat ?rel ?prob FROM <http://wikiDataRelProfile>";
-		this.where="WHERE {?cat ?rel ?prob}";
+		this.where="WHERE {graph <http://wikiDataRelProfile> {?cat ?rel ?prob}}";
 		this.params="ORDER BY ?cat";
 		ResultSet results=this.runQuery();
 		//virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
@@ -751,21 +906,25 @@ public class WikiQuerier {
 
 		HashMap<String, Double> currentProfile =new HashMap<String,Double>();
 
+		
+		String currentCat;
+		String currentRel;
+		Double currentProb;
 
 		while (results.hasNext()) {
 			QuerySolution result = results.nextSolution();
-			String currentCat= result.get("cat").toString();
-			String currentRel=result.get("rel").toString();
-			Double currentProb=Double.valueOf(virtuosoBridgeTools.entityCleaner(result.get("prob").toString()));
+			currentCat= result.get("cat").toString();
+			currentRel=result.get("rel").toString();
+			currentProb=Double.valueOf(virtuosoBridgeTools.entityCleaner(result.get("prob").toString()));
 
 			if(!(currentProfileCat.equals(currentCat))){
 
 				if(!(currentProfileCat=="")){
 					RelationProfile profileToAdd =new RelationProfile(currentProfile); 
-					resultMap.put(currentProfileCat, profileToAdd);
+					resultMap.put("<"+currentProfileCat+">", profileToAdd);
 				}
 				currentProfileCat=currentCat;
-				currentProfile =new HashMap<String,Double>();
+				currentProfile=new HashMap<String,Double>();
 
 			}
 			
@@ -773,7 +932,7 @@ public class WikiQuerier {
 
 		}
 		RelationProfile profileToAdd =new RelationProfile(currentProfile); 		
-		resultMap.put(currentProfileCat, profileToAdd);
+		resultMap.put("<"+currentProfileCat+">", profileToAdd);
 		return resultMap;
 
 	}
@@ -786,6 +945,21 @@ public class WikiQuerier {
 		
 		
 		String query=prefix+" ASK FROM <http://wikiDataCatAssignement> WHERE {GRAPH <http://wikiDataCatAssignement>  {"+ term +" ?b ?c}}";
+		Query sparql = QueryFactory.create(query);
+
+		VirtuosoQueryExecution vqe = VirtuosoQueryExecutionFactory.create (sparql, set);
+
+		boolean res = vqe.execAsk();
+        System.out.println("\nASK results: "+res);
+        return res;
+	}
+	/*
+	 * Check if cat As an assignation in graph
+	 */
+	public boolean isCatSimilarityInGraph(String term){
+		
+		
+		String query=prefix+" ASK FROM <http://wikiDataCatSimilarity> WHERE {GRAPH <http://wikiDataCatSimilarity>  {"+ term +" ?b ?c}}";
 		Query sparql = QueryFactory.create(query);
 
 		VirtuosoQueryExecution vqe = VirtuosoQueryExecutionFactory.create (sparql, set);

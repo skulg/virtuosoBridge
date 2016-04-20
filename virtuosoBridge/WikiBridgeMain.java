@@ -6,9 +6,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import javax.management.relation.Relation;
 
 public class WikiBridgeMain {
 	static String user="";
@@ -54,51 +57,23 @@ public class WikiBridgeMain {
 		String termToCompare ="term:James_Bond";
 		String termToCompare2 ="term:Madonna";
 		
-		//HashMap<String, Double>  similarityMap=querier.findTermSimilarityToCats(termToCompare2, catToCalcRelProfile,new MyMeasure());
+		//HashMap<String, Double>  similarityMap=querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile,new MyMeasure());
 		//new RelationProfile(similarityMap).printSortedProfile();
 		
 		
-		querier.isCatAssigned(termToCompare2);
+		//querier.isCatAssigned(termToCompare2);
 		
 		LinkedList<String> termsToClassify=new LinkedList<String>();
-		termsToClassify.add("term:T");
-		termsToClassify.add("term:Madonna");
-		querier.resumeTermAssignementLinkedList(termsToClassify,catToCalcRelProfile, new MyMeasure());
+		
+		termsToClassify=querier.fetchDistinctArg1TermsInFreqOrder(100000);
+		
+		//querier.resumeTermAssignementLinkedList(termsToClassify,catToCalcRelProfile, new MyMeasure());
 		
 		
-		//querier.loadCatsRelationProfileFromGraph();
-		
-		
-		
-		//Entry<String, Double> catAssigned = querier.assignCatToTerm(termToCompare, catToCalcRelProfile, new MyMeasure());
-		
-		
-		//System.out.println(catAssigned);
+		querier.resumeTermCatSimilarityLinkedList(termsToClassify, catToCalcRelProfile, new MyMeasure(), 10);
 		
 		
 		
-		//querier.assignAllTermsACat(catToCalcRelProfile, new MyMeasure());
-	
-	
-		/*
-		termProfile=querier.findEntityRelationProfile2(termToCompare);
-		termProfile2=querier.findEntityRelationProfile2(termToCompare2);
-	
-		termProfile.removeRelationFromProfile("relation:être");
-		Set<String> commonRelations =virtuosoBridgeTools.getIntersectionFrom2HashMap(termProfile.getProfile(), termProfile2.getProfile());
-		
-		
-		termProfile=termProfile.createSubsetProfile(commonRelations);
-		termProfile2=termProfile2.createSubsetProfile(commonRelations);
-		
-		
-		termProfile.normalize();
-		termProfile2.normalize();
-		
-		
-		Double symLevel=termProfile.findSimilarityLevel(termProfile2, normalProfile, new CosineSimilarity());
-		System.out.println(symLevel);
-*/
 	}
 
 	/*

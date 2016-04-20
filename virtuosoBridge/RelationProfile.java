@@ -30,6 +30,11 @@ public class RelationProfile {
 		this.profile=new HashMap<String,Double>();
 	}
 
+	
+	public RelationProfile(RelationProfile otherRelationProfile){
+		this.profile=new HashMap<String,Double>(otherRelationProfile.profile);
+		this.name=otherRelationProfile.name;
+	}
 
 	//Normalize the relationProfile to a proper Distribution
 	public void normalize(){
@@ -112,7 +117,10 @@ public class RelationProfile {
 	}
 
 	public void smooth2Profiles(RelationProfile otherProfile ,Double smoothingMass){
-		Set<String> terms=virtuosoBridgeTools.getAllKeysFrom2HashMap(getProfile(), otherProfile.getProfile());
+		HashMap<String, Double> map1ToCompare=this.getProfile();
+		HashMap<String, Double> map2ToCompare=otherProfile.getProfile();
+		
+		Set<String> terms=virtuosoBridgeTools.getAllKeysFrom2HashMap(map1ToCompare,map2ToCompare);
 		this.smooth(terms, smoothingMass);
 		otherProfile.smooth(terms, smoothingMass);
 	}
@@ -121,11 +129,12 @@ public class RelationProfile {
 		//TODO
 		
 		Double totalMassAdded=0.0;
-		
+		String currentTerm;
+		Double currentValue;
 		Iterator<String> iter=terms.iterator();
 		while (iter.hasNext()){
-			String currentTerm=iter.next();
-			Double currentValue=0.0;
+			currentTerm=iter.next();
+			currentValue=0.0;
 
 			if(this.profile.containsKey(currentTerm)){
 				currentValue=this.profile.get(currentTerm);
