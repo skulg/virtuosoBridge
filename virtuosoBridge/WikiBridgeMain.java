@@ -34,46 +34,47 @@ public class WikiBridgeMain {
 
 			querier.testingOnTestGraph();
 		}
-		
+
 		LinkedList<String> catToCalcRelProfile= querier.findTopCats(1000);
-		
-	
+
+
 		//Regenerate Graph of category RelationGraph
 		//querier.generateListCatRelationProfileGraph(catToCalcRelProfile);
-		
+
 		//RelationProfile otherCatProfile=querier.genOtherCatRelProfilev2(catToCalcRelProfile);
 		//otherCatProfile.printSortedProfile();
 		//catToCalcRelProfile.add("term:OTHERcATS");
-		
+
 		// get Mean Relation Distribution
 		//HashMap<String, Double> normalRelationDistributionMap=querier.generateNormalRelationProfile();
-		
+
 		RelationProfile termProfile=new RelationProfile();
 		RelationProfile termProfile2=new RelationProfile();
 
 		//RelationProfile normalProfile= querier.generateNormalRelationProfile();
-		
+
 		//Queries
 		String termToCompare ="term:James_Bond";
 		String termToCompare2 ="term:Madonna";
-		
+
 		//HashMap<String, Double>  similarityMap=querier.findTermSimilarityToCats(termToCompare, catToCalcRelProfile,new MyMeasure());
 		//new RelationProfile(similarityMap).printSortedProfile();
-		
-		
+
+
 		//querier.isCatAssigned(termToCompare2);
-		
+
 		LinkedList<String> termsToClassify=new LinkedList<String>();
-		
-		termsToClassify=querier.fetchDistinctArg1TermsInFreqOrder(100000);
-		
+
+		//		termsToClassify=querier.fetchDistinctArg1TermsInFreqOrder(100000);
+
 		//querier.resumeTermAssignementLinkedList(termsToClassify,catToCalcRelProfile, new MyMeasure());
-		
-		
-		querier.resumeTermCatSimilarityLinkedList(termsToClassify, catToCalcRelProfile, new MyMeasure(), 10);
-		
-		
-		
+
+
+		//		querier.resumeTermCatSimilarityLinkedList(termsToClassify, catToCalcRelProfile, new MyMeasure(), 10);
+
+
+		querier.dumpCatAssignementGraphToTextFiles();
+
 	}
 
 	/*

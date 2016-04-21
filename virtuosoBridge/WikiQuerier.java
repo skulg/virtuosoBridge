@@ -886,6 +886,11 @@ public class WikiQuerier {
 
 	}
 
+	/*
+	 * Load all Relation Profiles describing categories into an HashMap to speed up 
+	 * multiples queries
+	 */
+	
 	public HashMap<String,RelationProfile> loadCatsRelationProfileFromGraph(){
 
 		HashMap<String, RelationProfile> resultMap= new HashMap<String,RelationProfile>();
@@ -939,7 +944,7 @@ public class WikiQuerier {
 	
 	
 	/*
-	 * Check if cat As an assignation in graph
+	 * Check if term as a cat assignation in graph
 	 */
 	public boolean isCatAssigned(String term){
 		
@@ -953,8 +958,10 @@ public class WikiQuerier {
         System.out.println("\nASK results: "+res);
         return res;
 	}
+	
+	
 	/*
-	 * Check if cat As an assignation in graph
+	 * Check if term as a similarityLevel in graph
 	 */
 	public boolean isCatSimilarityInGraph(String term){
 		
@@ -969,6 +976,29 @@ public class WikiQuerier {
         return res;
 	}
 
+	/*
+	 * Take the Graph similarity graph fetch the catAssignement for each term 
+	 * and dump results into a seperate text files for each categories
+	 */
+	
+	public void dumpCatAssignementGraphToTextFiles(){
+		
+		
+		ArrayList<String> vars= new ArrayList<String>();	
+		vars.add("?x");
+		vars.add("?b");
+		vars.add("?max");
+		this.select="SELECT ?x ?b ?max FROM <http://wikiDataCatSimilarity>";
+		this.where="WHERE {  graph <http://wikiDataCatSimilarity> {?x ?b ?max {SELECT ?x (MAX(?value) AS ?max) WHERE { ?x ?b ?value}GROUP BY ?x}}}";
+		this.params="ORDER BY ?b DESC(?max)";
+		ResultSet results=this.runQuery();
+		virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
+		
+	
+		
+		
+		
+	}
 
 
 }
