@@ -43,6 +43,12 @@ public class MyMeasure extends SimilarityMeasure {
 
 		Double cosSimilarity=numerator/denominator;
 
+		
+		//AVOID the 0/0 case
+		if(Double.isNaN(cosSimilarity)){
+			cosSimilarity=0.0;
+		}
+		
 		return cosSimilarity;
 	}
 

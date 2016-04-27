@@ -65,12 +65,12 @@ public class WikiBridgeMain {
 
 		LinkedList<String> termsToClassify=new LinkedList<String>();
 
-		//		termsToClassify=querier.fetchDistinctArg1TermsInFreqOrder(100000);
+				//termsToClassify=querier.fetchDistinctArg1TermsInFreqOrder(100000);
 
 		//querier.resumeTermAssignementLinkedList(termsToClassify,catToCalcRelProfile, new MyMeasure());
 
 
-		//		querier.resumeTermCatSimilarityLinkedList(termsToClassify, catToCalcRelProfile, new MyMeasure(), 10);
+				//querier.resumeTermCatSimilarityLinkedList(termsToClassify, catToCalcRelProfile, new MyMeasure(), 10);
 
 
 		querier.dumpCatAssignementGraphToTextFiles();

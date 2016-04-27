@@ -1,4 +1,9 @@
 package virtuosoBridge;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -183,16 +188,16 @@ public class WikiQuerier {
 			System.out.println("Relation profiles for categories not present in cache. Fetching please be patient.");
 			this.cachedCatRelProfile=this.loadCatsRelationProfileFromGraph();
 			System.out.println("Fetching Done.");
-			
+
 		}
 		RelationProfile returnProfile=this.cachedCatRelProfile.get(uri);
-	
-		
+
+
 		return returnProfile;
-		
-		
+
+
 	}
-	
+
 
 
 	/*
@@ -442,20 +447,20 @@ public class WikiQuerier {
 	}
 	public LinkedList<String> fetchDistinctArg1TermsInFreqOrder(int nbToFetch){
 
-		
+
 		System.out.println("Fetching "+nbToFetch +" most frequent terms");
-		
+
 		LinkedList<String> resultList = new LinkedList<String>();
 		ArrayList<String> vars= new ArrayList<String>();
 		vars.add("a");
-		
-		
+
+
 		this.select="SELECT * ";
 		this.where="WHERE {SELECT DISTINCT ?a WHERE {?a ?b ?c} GROUP BY ?a ORDER BY DESC (count (?a)) }";
 		this.params="LIMIT "+nbToFetch;
-		
-		
-		
+
+
+
 		ResultSet results=this.runQuery();
 		//somewhatPrettyPrint(vars, results);
 		while (results.hasNext()) {
@@ -467,7 +472,7 @@ public class WikiQuerier {
 
 		return resultList;
 	}
-	
+
 
 
 
@@ -480,15 +485,15 @@ public class WikiQuerier {
 		HashMap<String,Double> similarityResults= new HashMap<String,Double>();
 		String currentCat;
 		RelationProfile catRelProfile;
-	
+
 		while(iter.hasNext()){
 			currentCat=iter.next();
 			currentCat=currentCat.replace("term:", "cat:");
 			catRelProfile=this.fetchRelProfileFromHashMap(currentCat);
-			
+
 			Double currentSimilarity=termRelProfile.findSimilarityLevel(catRelProfile,normalProfile,measure);
 			similarityResults.put(currentCat, currentSimilarity);
-			
+
 		}
 		return similarityResults;
 
@@ -500,17 +505,17 @@ public class WikiQuerier {
 
 		Iterator <Entry<String,Double>> iter = virtuosoBridgeTools.hashMapToSortedLinkedList(similarityResults).iterator();
 		int count=0;
-		
+
 		while(iter.hasNext() & count< nbOfCatToAssignToTerm){		
 			catAssigned=iter.next();
 			this.addCatTermSimilarityToGraph(term, catAssigned);
 			count++;
 		}
-		
-		
+
+
 	}
-	
-	
+
+
 	public Entry<String,Double> assignCatToTerm(String term , LinkedList<String> cats , SimilarityMeasure measure){
 		Entry<String,Double> catAssigned=null;
 		HashMap<String, Double> similarityResults=findTermSimilarityToCats(term, cats, measure);
@@ -537,16 +542,16 @@ public class WikiQuerier {
 		System.out.println("Done");
 		System.out.println("");
 
-		
+
 		this.assignAllTermsInListACat(list, cats, measure);
-		
-		
+
+
 
 	}
-	
+
 	public void resumeTermAssignementLinkedList (LinkedList<String> termsToClassify,LinkedList<String> cats,SimilarityMeasure measure){
 		boolean foundResumingSpot=false;
-		
+
 		while (!foundResumingSpot &termsToClassify.size()>0 ){
 			if (this.isCatAssigned(termsToClassify.getFirst())){
 				System.out.println(termsToClassify.removeFirst() + " was already classified skipping");
@@ -554,15 +559,15 @@ public class WikiQuerier {
 				foundResumingSpot=true;
 			}
 		}
-		
+
 		assignAllTermsInListACat(termsToClassify, cats, measure);
-		
+
 	}
-	
-	
+
+
 	public void resumeTermCatSimilarityLinkedList (LinkedList<String> termsToClassify,LinkedList<String> cats,SimilarityMeasure measure ,int nbOfCatsToAssignPerTerms){
 		boolean foundResumingSpot=false;
-		
+
 		while (!foundResumingSpot &termsToClassify.size()>0 ){
 			if (this.isCatSimilarityInGraph(termsToClassify.getFirst())){
 				System.out.println(termsToClassify.removeFirst() + " was already classified skipping");
@@ -570,13 +575,13 @@ public class WikiQuerier {
 				foundResumingSpot=true;
 			}
 		}
-		
+
 		assignAllTermsInListACatSimilarity(termsToClassify, cats, measure,nbOfCatsToAssignPerTerms);
-		
+
 	}
-	
-	
-	
+
+
+
 	public void assignAllTermsInListACat(LinkedList<String> termsToClassify,LinkedList<String> cats,SimilarityMeasure measure){
 		System.out.println("Starting Classification");
 
@@ -593,10 +598,10 @@ public class WikiQuerier {
 			duration = (System.nanoTime() - startTime)/1000000000;
 			System.out.println("Treating "+currentTerm + " "+nbItemsProcessed+"/"+totalItemCount);
 
-			
-			
+
+
 			assignedCatAndSimilarity=this.assignCatToTerm(currentTerm, cats, measure);
-			
+
 			addCatAssignementToGraph(currentTerm,assignedCatAndSimilarity);
 			nbItemsProcessed++;
 			eta=totalItemCount/nbItemsProcessed*duration;
@@ -606,12 +611,12 @@ public class WikiQuerier {
 		}
 		System.out.println("Done");
 		System.out.println("");
-		
+
 	}
-	
-	
+
+
 	public void assignAllTermsInListACatSimilarity(LinkedList<String> termsToClassify,LinkedList<String> cats,SimilarityMeasure measure , int nbOfCatsToAssignPerTerms){
-		
+
 		System.out.println("");
 		System.out.println("Starting Cat Similarity calculation");
 		final long startTime = System.nanoTime();
@@ -620,10 +625,10 @@ public class WikiQuerier {
 		long duration;
 		Long eta;
 
-		
+
 		Iterator<String> iter=termsToClassify.iterator();
 		String currentTerm;
-		
+
 		while(iter.hasNext()){
 			currentTerm =iter.next();
 			duration = (System.nanoTime() - startTime)/1000000000;
@@ -631,10 +636,10 @@ public class WikiQuerier {
 			System.out.println("========================");
 			System.out.println("Treating "+currentTerm);
 
-			
-			
+
+
 			this.assignAndAddToGraphCatSimilarity(currentTerm,cats , measure, nbOfCatsToAssignPerTerms);
-			
+
 			nbItemsProcessed++;
 			eta=totalItemCount/nbItemsProcessed*duration;
 			System.out.println(""+nbItemsProcessed+"/"+totalItemCount + " time:" + duration + " eta:"+eta);
@@ -642,10 +647,10 @@ public class WikiQuerier {
 		}
 		System.out.println("Done");
 		System.out.println("");
-		
+
 	}
-	
-	
+
+
 
 	public void addCatAssignementToGraph(String termClassified , Entry<String,Double> assignementEntry){
 
@@ -661,16 +666,14 @@ public class WikiQuerier {
 		query+="}";
 
 		System.out.println(tripleToAdd);
-
-		if(similarityLevel.isNaN()){
-			similarityLevel=0.0;
-		}
 		
+
+
 		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
 		vur.exec(); 
 
 	}
-	
+
 	public void addCatTermSimilarityToGraph(String termClassified, Entry<String,Double> assignementEntry){
 		String query=prefix+" INSERT INTO GRAPH <http://wikiDataCatSimilarity> {";
 
@@ -684,12 +687,10 @@ public class WikiQuerier {
 
 		System.out.println(tripleToAdd);
 
-		if(similarityLevel.isNaN()){
-			similarityLevel=0.0;
-		}
+	
 		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
 		vur.exec(); 
-		
+
 	}
 
 
@@ -733,8 +734,8 @@ public class WikiQuerier {
 		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(str, set);
 		vur.exec();
 	}
-	
-	
+
+
 	/*
 	 * Create terms set for terms not in cats list
 	 */
@@ -890,7 +891,7 @@ public class WikiQuerier {
 	 * Load all Relation Profiles describing categories into an HashMap to speed up 
 	 * multiples queries
 	 */
-	
+
 	public HashMap<String,RelationProfile> loadCatsRelationProfileFromGraph(){
 
 		HashMap<String, RelationProfile> resultMap= new HashMap<String,RelationProfile>();
@@ -911,7 +912,7 @@ public class WikiQuerier {
 
 		HashMap<String, Double> currentProfile =new HashMap<String,Double>();
 
-		
+
 		String currentCat;
 		String currentRel;
 		Double currentProb;
@@ -932,7 +933,7 @@ public class WikiQuerier {
 				currentProfile=new HashMap<String,Double>();
 
 			}
-			
+
 			currentProfile.put(currentRel, currentProb);
 
 		}
@@ -941,49 +942,49 @@ public class WikiQuerier {
 		return resultMap;
 
 	}
-	
-	
+
+
 	/*
 	 * Check if term as a cat assignation in graph
 	 */
 	public boolean isCatAssigned(String term){
-		
-		
+
+
 		String query=prefix+" ASK FROM <http://wikiDataCatAssignement> WHERE {GRAPH <http://wikiDataCatAssignement>  {"+ term +" ?b ?c}}";
 		Query sparql = QueryFactory.create(query);
 
 		VirtuosoQueryExecution vqe = VirtuosoQueryExecutionFactory.create (sparql, set);
 
 		boolean res = vqe.execAsk();
-        System.out.println("\nASK results: "+res);
-        return res;
+		System.out.println("\nASK results: "+res);
+		return res;
 	}
-	
-	
+
+
 	/*
 	 * Check if term as a similarityLevel in graph
 	 */
 	public boolean isCatSimilarityInGraph(String term){
-		
-		
+
+
 		String query=prefix+" ASK FROM <http://wikiDataCatSimilarity> WHERE {GRAPH <http://wikiDataCatSimilarity>  {"+ term +" ?b ?c}}";
 		Query sparql = QueryFactory.create(query);
 
 		VirtuosoQueryExecution vqe = VirtuosoQueryExecutionFactory.create (sparql, set);
 
 		boolean res = vqe.execAsk();
-        System.out.println("\nASK results: "+res);
-        return res;
+		System.out.println("\nASK results: "+res);
+		return res;
 	}
 
 	/*
 	 * Take the Graph similarity graph fetch the catAssignement for each term 
 	 * and dump results into a seperate text files for each categories
 	 */
-	
+
 	public void dumpCatAssignementGraphToTextFiles(){
-		
-		
+
+
 		ArrayList<String> vars= new ArrayList<String>();	
 		vars.add("?x");
 		vars.add("?b");
@@ -992,12 +993,47 @@ public class WikiQuerier {
 		this.where="WHERE {  graph <http://wikiDataCatSimilarity> {?x ?b ?max {SELECT ?x (MAX(?value) AS ?max) WHERE { ?x ?b ?value}GROUP BY ?x}}}";
 		this.params="ORDER BY ?b DESC(?max)";
 		ResultSet results=this.runQuery();
-		virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
-		
-	
-		
-		
-		
+
+		//		virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
+		String currentCat;
+		String currentTerm;
+		Double currentSimilarity;
+		String path="categories/";
+		String currentFilename="testingStuff";
+		File currentFile=new File(path+currentFilename+".txt");
+		try {
+			File allFile=new File(path+"all.txt");
+			FileWriter writer=new FileWriter(currentFile);
+			FileWriter allWriter=new FileWriter(allFile);
+			while (results.hasNext()) {
+				QuerySolution result = results.nextSolution();
+				currentCat= virtuosoBridgeTools.entityCleaner(result.get("b").toString());
+				currentTerm= virtuosoBridgeTools.entityCleaner(result.get("x").toString());
+				currentSimilarity=Double.valueOf(virtuosoBridgeTools.entityCleaner(result.get("max").toString()));
+
+				if(!currentCat.equals(currentFilename)){
+
+					currentFilename=currentCat;
+					currentFile=new File(path+currentFilename+".txt");
+					writer.close();
+
+					writer = new FileWriter(currentFile);
+				} 
+
+				String lineToWrite=""+currentTerm+" "+currentSimilarity+System.getProperty("line.separator");;
+				writer.write(lineToWrite);
+				allWriter.write(currentCat+" "+lineToWrite);
+			}
+			allWriter.close();
+			writer.close();
+
+
+		}
+
+		catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 
