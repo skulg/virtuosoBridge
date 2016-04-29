@@ -74,6 +74,7 @@ public class WikiBridgeMain {
 
 
 		querier.dumpCatAssignementGraphToTextFiles();
+		querier.dumpCatSimilarityGraphToTextFile();
 
 	}
 

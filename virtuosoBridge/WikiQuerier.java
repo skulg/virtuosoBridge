@@ -1022,7 +1022,7 @@ public class WikiQuerier {
 
 				String lineToWrite=""+currentTerm+" "+currentSimilarity+System.getProperty("line.separator");;
 				writer.write(lineToWrite);
-				allWriter.write(currentCat+" "+lineToWrite);
+				allWriter.write(currentCat+" || "+lineToWrite);
 			}
 			allWriter.close();
 			writer.close();
@@ -1035,6 +1035,52 @@ public class WikiQuerier {
 			e.printStackTrace();
 		}
 	}
+	
+	public void dumpCatSimilarityGraphToTextFile(){
+
+
+		ArrayList<String> vars= new ArrayList<String>();	
+		vars.add("?x");
+		vars.add("?b");
+		vars.add("?c");
+		this.select="SELECT ?x ?b ?c FROM <http://wikiDataCatSimilarity>";
+		this.where="WHERE {  graph <http://wikiDataCatSimilarity> {?x ?b ?c }}";
+		this.params="ORDER BY ?x ";
+		ResultSet results=this.runQuery();
+
+		//		virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
+		String currentCat;
+		String currentTerm;
+		Double currentSimilarity;
+		String path="categories/";
+		String currentFilename="allSimilarities.txt";
+		File currentFile=new File(path+currentFilename+".txt");
+		try {
+			
+			FileWriter writer=new FileWriter(currentFile);
+
+			while (results.hasNext()) {
+				QuerySolution result = results.nextSolution();
+				currentCat= virtuosoBridgeTools.entityCleaner(result.get("b").toString());
+				currentTerm= virtuosoBridgeTools.entityCleaner(result.get("x").toString());
+				currentSimilarity=Double.valueOf(virtuosoBridgeTools.entityCleaner(result.get("c").toString()));
+
+
+				String lineToWrite=""+currentTerm+" || "+currentCat+" || "+currentSimilarity+System.getProperty("line.separator");;
+				writer.write(lineToWrite);
+				
+			}
+			writer.close();
+
+
+		}
+
+		catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 
 
 }
