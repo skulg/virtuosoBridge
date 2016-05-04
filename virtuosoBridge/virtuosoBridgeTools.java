@@ -197,6 +197,19 @@ public class virtuosoBridgeTools {
 		}
 		
 	}
+
+
+	public static LinkedList<String> getRandomSubListFromList(LinkedList<String> termList, int nbToFetch) {
+		LinkedList<String> resultList=new LinkedList<String>();
+		Collections.shuffle(termList);
+		int nbAdded=0;
+		while(nbAdded<nbToFetch){
+			resultList.add(termList.pop());
+			nbAdded++;
+		}
+		// TODO Auto-generated method stub
+		return resultList;
+	}
 	
 
 }

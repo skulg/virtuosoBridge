@@ -666,7 +666,7 @@ public class WikiQuerier {
 		query+="}";
 
 		System.out.println(tripleToAdd);
-		
+
 
 
 		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
@@ -687,7 +687,7 @@ public class WikiQuerier {
 
 		System.out.println(tripleToAdd);
 
-	
+
 		VirtuosoUpdateRequest vur  = VirtuosoUpdateFactory.create(query, set);
 		vur.exec(); 
 
@@ -998,7 +998,7 @@ public class WikiQuerier {
 		String currentCat;
 		String currentTerm;
 		Double currentSimilarity;
-		String path="categories/";
+		String path="categoriesAssignements/";
 		String currentFilename="testingStuff";
 		File currentFile=new File(path+currentFilename+".txt");
 		try {
@@ -1035,7 +1035,7 @@ public class WikiQuerier {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void dumpCatSimilarityGraphToTextFile(){
 
 
@@ -1045,18 +1045,18 @@ public class WikiQuerier {
 		vars.add("?c");
 		this.select="SELECT ?x ?b ?c FROM <http://wikiDataCatSimilarity>";
 		this.where="WHERE {  graph <http://wikiDataCatSimilarity> {?x ?b ?c }}";
-		this.params="ORDER BY ?x ";
+		this.params="ORDER BY ?x DESC(?c) ";
 		ResultSet results=this.runQuery();
 
 		//		virtuosoBridgeTools.somewhatPrettyPrint(vars, results);
 		String currentCat;
 		String currentTerm;
 		Double currentSimilarity;
-		String path="categories/";
-		String currentFilename="allSimilarities.txt";
+		String path="categoriesAssignements/";
+		String currentFilename="allSimilarities";
 		File currentFile=new File(path+currentFilename+".txt");
 		try {
-			
+
 			FileWriter writer=new FileWriter(currentFile);
 
 			while (results.hasNext()) {
@@ -1068,7 +1068,7 @@ public class WikiQuerier {
 
 				String lineToWrite=""+currentTerm+" || "+currentCat+" || "+currentSimilarity+System.getProperty("line.separator");;
 				writer.write(lineToWrite);
-				
+
 			}
 			writer.close();
 
@@ -1080,7 +1080,119 @@ public class WikiQuerier {
 			e.printStackTrace();
 		}
 	}
-	
+
+
+
+
+	public void dumpCatRelProfilesHashMapToTextFile(){
+
+		LinkedList<String> cats=this.findTopCats(1000);
+
+		String currentCat;
+		String currentRelation;
+		Double currentSimilarity;
+		String path="profiles/categoriesProfile/";
+		String currentFilename="allCatsProfiles";
+		File currentFile=new File(path+currentFilename+".txt");
+
+
+		Iterator<String> iter=cats.iterator();
+		RelationProfile currentProfile;
+		Iterator<Entry<String,Double>> profileIter;
+		Entry<String,Double> currentEntry;
+		String lineToWrite;
+		System.out.println("Starting catRelProfiles Dump");
+		
+		try {
+			FileWriter writer=new FileWriter(currentFile);
+
+
+			while(iter.hasNext()){
+
+				currentCat=iter.next();
+				currentProfile=this.fetchRelProfileFromHashMap(currentCat);
+				
+				profileIter=virtuosoBridgeTools.hashMapToSortedLinkedList(currentProfile.getProfile()).iterator();
+				currentCat= virtuosoBridgeTools.entityCleaner(currentCat);
+				while(profileIter.hasNext()){
+					currentEntry=profileIter.next();
+
+					currentRelation=virtuosoBridgeTools.entityCleaner(currentEntry.getKey());
+					currentSimilarity=currentEntry.getValue();
+					lineToWrite=""+currentCat+" || "+currentRelation+" || "+currentSimilarity+System.getProperty("line.separator");;
+					writer.write(lineToWrite);
+
+//					System.out.println("Writing line : "+lineToWrite);				
+					
+				}
+
+			}
+
+			System.out.println("Done");
+			
+			writer.close();
+		}catch(Exception e){
+
+			System.out.println("Error");
+			
+		}
+
+
+	}
+	public void dumpRandomRelProfilesFromListToTextFile(LinkedList<String> termList , int nbToFetch){
+
+//		LinkedList<String> subList=virtuosoBridgeTools.getRandomSubListFromList(termList,nbToFetch);
+		LinkedList<String> subList=termList;
+		
+		String currentTerm;
+		String currentRelation;
+		Double currentSimilarity;
+		String path="profiles/termsProfile/";
+		String currentFilename="allTermsProfiles";
+		File currentFile=new File(path+currentFilename+".txt");
+
+
+		Iterator<String> iter=subList.iterator();
+		RelationProfile currentProfile;
+		Iterator<Entry<String,Double>> profileIter;
+		Entry<String,Double> currentEntry;
+		String lineToWrite;
+		System.out.println("Starting termRelProfiles Dump");
+		
+		try {
+			FileWriter writer=new FileWriter(currentFile);
+
+
+			while(iter.hasNext()){
+
+				currentTerm=iter.next();
+				currentProfile=this.findEntityRelationProfile2(currentTerm);
+				
+				profileIter=virtuosoBridgeTools.hashMapToSortedLinkedList(currentProfile.getProfile()).iterator();
+				currentTerm= virtuosoBridgeTools.entityCleaner(currentTerm);
+				while(profileIter.hasNext()){
+					currentEntry=profileIter.next();
+
+					currentRelation=virtuosoBridgeTools.entityCleaner(currentEntry.getKey());
+					currentSimilarity=currentEntry.getValue();
+					lineToWrite=""+currentTerm+" || "+currentRelation+" || "+currentSimilarity+System.getProperty("line.separator");;
+					writer.write(lineToWrite);
+
+//					System.out.println("Writing line : "+lineToWrite);				
+					
+				}
+
+			}
+
+			System.out.println("Done");
+			
+			writer.close();
+		}catch(Exception e){
+
+			System.out.println("Error");
+			
+		}
+	}
 
 
 }
